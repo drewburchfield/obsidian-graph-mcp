@@ -59,7 +59,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S106", "T201", "S108", "B007", "F841"]  # Allow assert, passwords, print, /tmp, unused vars in tests
+"tests/*" = ["S101", "S106", "T201", "S108", "B007", "F841", "E402"]  # Allow assert, passwords, print, /tmp, unused vars, non-top imports in tests
 "src/diagnose_vault.py" = ["T201"]  # CLI diagnostic script uses print() for output
 
 [tool.black]
