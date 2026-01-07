@@ -7,19 +7,20 @@ Tests that all parameters are properly validated for:
 3. Valid ranges
 4. Sensible defaults
 """
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.validation import (
-    validate_search_notes_args,
-    validate_similar_notes_args,
+    ValidationError,
     validate_connection_graph_args,
     validate_hub_notes_args,
     validate_orphaned_notes_args,
-    ValidationError
+    validate_search_notes_args,
+    validate_similar_notes_args,
 )
 
 

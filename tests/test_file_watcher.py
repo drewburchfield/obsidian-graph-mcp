@@ -8,13 +8,14 @@ Tests:
 4. Startup scan for offline changes
 5. Lock cleanup for memory leak prevention
 """
-import pytest
 import asyncio
-import time
-from pathlib import Path
-from datetime import datetime
-from unittest.mock import MagicMock, AsyncMock
 import sys
+import time
+from datetime import UTC, datetime
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -185,9 +186,8 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
     )
 
     # Mock database to return old last_indexed_at times
-    from datetime import timezone
     mock_conn = AsyncMock()
-    mock_conn.fetchval = AsyncMock(return_value=datetime(2020, 1, 1, tzinfo=timezone.utc))  # Very old timestamp (timezone-aware)
+    mock_conn.fetchval = AsyncMock(return_value=datetime(2020, 1, 1, tzinfo=UTC))  # Very old timestamp (timezone-aware)
 
     class MockAcquire:
         async def __aenter__(self):
@@ -213,7 +213,7 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
     # Should have detected stale files (note1.md, note2.md, folder/note3.md)
     # Empty.md might be skipped
     assert vault_watcher.event_handler._reindex_file.call_count >= 3, \
-        f"Expected at least 3 stale files detected"
+        "Expected at least 3 stale files detected"
 
 
 @pytest.mark.asyncio

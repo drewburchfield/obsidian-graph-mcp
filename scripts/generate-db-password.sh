@@ -28,8 +28,8 @@ NC='\033[0m' # No Color
 
 # Generate secure random password (48 chars: alphanumeric)
 generate_password() {
-    # Use openssl for reliable password generation
-    openssl rand -base64 36 | tr -dc 'A-Za-z0-9' | head -c 48
+    # Use /dev/urandom for cryptographic randomness
+    head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 48
 }
 
 echo "🔐 Obsidian Graph - Database Password Generator"

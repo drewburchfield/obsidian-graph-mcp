@@ -8,15 +8,16 @@ Tests error scenarios that are difficult to reproduce in normal operation:
 - Missing notes
 """
 
-import pytest
-from unittest.mock import MagicMock, AsyncMock
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.vector_store import VectorStoreError
 from src.exceptions import EmbeddingError
+from src.vector_store import VectorStoreError
 
 
 class TestEmbeddingFailures:
@@ -51,12 +52,12 @@ class TestDatabaseFailures:
     @pytest.mark.asyncio
     async def test_database_pool_timeout(self, server_context):
         """Verify timeout handling when connection pool is exhausted."""
+
         from src.server import call_tool
-        import asyncio
 
         # Configure mock to simulate pool exhaustion timeout
         async def timeout_side_effect(*args, **kwargs):
-            raise asyncio.TimeoutError("Connection pool exhausted")
+            raise TimeoutError("Connection pool exhausted")
 
         server_context.store.search = AsyncMock(side_effect=timeout_side_effect)
         server_context.embedder.embed = MagicMock(return_value=[0.1] * 1024)
@@ -102,8 +103,8 @@ class TestServerInitialization:
     @pytest.mark.asyncio
     async def test_all_tools_handle_uninitialized_server(self):
         """Verify all tools return proper error when server not initialized."""
-        from src.server import call_tool
         import src.server
+        from src.server import call_tool
 
         # Save original context
         original_context = src.server._server_context
@@ -141,8 +142,8 @@ class TestGraphBuilderErrors:
     @pytest.mark.asyncio
     async def test_get_note_info_raises_on_db_error(self, mock_store):
         """_get_note_info should raise DatabaseError on query failure."""
-        from src.graph_builder import GraphBuilder
         from src.exceptions import DatabaseError
+        from src.graph_builder import GraphBuilder
 
         # Configure mock to raise exception on pool.acquire()
         class MockAcquire:
@@ -189,8 +190,8 @@ class TestGraphBuilderErrors:
     @pytest.mark.asyncio
     async def test_compute_similarity_raises_on_db_error(self, mock_store):
         """_compute_similarity should raise DatabaseError on query failure."""
-        from src.graph_builder import GraphBuilder
         from src.exceptions import DatabaseError
+        from src.graph_builder import GraphBuilder
 
         # Configure mock to raise exception
         mock_conn = AsyncMock()

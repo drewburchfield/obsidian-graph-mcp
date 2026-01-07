@@ -7,11 +7,11 @@ Provides reusable fixtures for:
 - Temporary vaults with test data
 - Server contexts for integration testing
 """
-import pytest
 import asyncio
-from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 
 @pytest.fixture(scope="module")
@@ -138,9 +138,9 @@ async def server_context(mock_store, mock_embedder):
     is restored after the test completes.
     """
     import src.server
-    from src.server import ServerContext
     from src.graph_builder import GraphBuilder
     from src.hub_analyzer import HubAnalyzer
+    from src.server import ServerContext
 
     # Save original context
     original_context = src.server._server_context

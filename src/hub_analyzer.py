@@ -6,7 +6,7 @@ using materialized connection_count statistics.
 """
 
 import asyncio
-from typing import List, Dict
+
 from loguru import logger
 
 from .vector_store import PostgreSQLVectorStore
@@ -63,7 +63,7 @@ class HubAnalyzer:
         min_connections: int = 10,
         threshold: float = 0.5,
         limit: int = 20
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Find highly connected notes (hubs).
 
@@ -117,7 +117,7 @@ class HubAnalyzer:
         max_connections: int = 2,
         threshold: float = 0.5,
         limit: int = 20
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Find isolated notes (orphans).
 

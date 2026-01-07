@@ -7,7 +7,8 @@ Provides centralized validation with:
 - Default value application
 - Descriptive error messages
 """
-from typing import Dict, Any
+from typing import Any
+
 from loguru import logger
 
 
@@ -17,7 +18,7 @@ class ValidationError(Exception):
 
 
 def validate_required_string(
-    args: Dict[str, Any],
+    args: dict[str, Any],
     param_name: str,
     allow_empty: bool = False,
     max_length: int = 10000
@@ -59,7 +60,7 @@ def validate_required_string(
 
 
 def validate_int_range(
-    args: Dict[str, Any],
+    args: dict[str, Any],
     param_name: str,
     default: int,
     min_val: int,
@@ -107,7 +108,7 @@ def validate_int_range(
 
 
 def validate_float_range(
-    args: Dict[str, Any],
+    args: dict[str, Any],
     param_name: str,
     default: float,
     min_val: float,
@@ -156,7 +157,7 @@ def validate_float_range(
 
 # Tool-specific validation functions
 
-def validate_search_notes_args(args: Dict[str, Any]) -> Dict[str, Any]:
+def validate_search_notes_args(args: dict[str, Any]) -> dict[str, Any]:
     """
     Validate parameters for search_notes tool.
 
@@ -180,7 +181,7 @@ def validate_search_notes_args(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def validate_similar_notes_args(args: Dict[str, Any]) -> Dict[str, Any]:
+def validate_similar_notes_args(args: dict[str, Any]) -> dict[str, Any]:
     """
     Validate parameters for get_similar_notes tool.
 
@@ -204,7 +205,7 @@ def validate_similar_notes_args(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def validate_connection_graph_args(args: Dict[str, Any]) -> Dict[str, Any]:
+def validate_connection_graph_args(args: dict[str, Any]) -> dict[str, Any]:
     """
     Validate parameters for get_connection_graph tool.
 
@@ -230,7 +231,7 @@ def validate_connection_graph_args(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def validate_hub_notes_args(args: Dict[str, Any]) -> Dict[str, Any]:
+def validate_hub_notes_args(args: dict[str, Any]) -> dict[str, Any]:
     """
     Validate parameters for get_hub_notes tool.
 
@@ -252,7 +253,7 @@ def validate_hub_notes_args(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def validate_orphaned_notes_args(args: Dict[str, Any]) -> Dict[str, Any]:
+def validate_orphaned_notes_args(args: dict[str, Any]) -> dict[str, Any]:
     """
     Validate parameters for get_orphaned_notes tool.
 

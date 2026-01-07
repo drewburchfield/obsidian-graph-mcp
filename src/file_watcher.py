@@ -4,20 +4,20 @@ File watching and incremental re-indexing for Obsidian vault.
 Monitors markdown files for changes and triggers debounced re-indexing.
 """
 
+import asyncio
 import os
 import time
-import asyncio
-from pathlib import Path
-from datetime import datetime, timezone
-from typing import Dict
 from concurrent.futures import ThreadPoolExecutor
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from loguru import logger
+from datetime import UTC, datetime
+from pathlib import Path
 
-from .vector_store import PostgreSQLVectorStore, Note
+from loguru import logger
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
 from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
+from .vector_store import Note, PostgreSQLVectorStore
 
 
 class ObsidianFileWatcher(FileSystemEventHandler):
@@ -63,11 +63,11 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         self.embedder = embedder
         self.loop = loop
         self.debounce_seconds = debounce_seconds
-        self.pending_changes: Dict[str, float] = {}
+        self.pending_changes: dict[str, float] = {}
         self.executor = ThreadPoolExecutor(max_workers=1)
 
         # Per-file locks to prevent concurrent re-indexing of same file
-        self._reindex_locks: Dict[str, asyncio.Lock] = {}
+        self._reindex_locks: dict[str, asyncio.Lock] = {}
         self._locks_lock = asyncio.Lock()  # Protects _reindex_locks dict itself
 
         logger.info(f"File watcher initialized (debounce: {debounce_seconds}s)")
@@ -204,12 +204,12 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         """
         try:
             # Read file
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 content = f.read()
 
             # Get file metadata
             stat = os.stat(file_path)
-            modified_at = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+            modified_at = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
             file_size = stat.st_size
 
             # Get vault-relative path
@@ -294,7 +294,7 @@ class VaultWatcher:
                 for file_path in md_files:
                     rel_path = str(file_path.relative_to(vault))
                     # Create timezone-aware datetime to match database TIMESTAMP WITH TIME ZONE
-                    file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
+                    file_mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=UTC)
 
                     # Check last indexed time from database
                     last_indexed = await conn.fetchval(

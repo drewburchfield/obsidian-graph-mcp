@@ -7,13 +7,14 @@ Tests that note_path parameters are properly validated to prevent:
 3. Null byte injection
 4. Access to files outside vault
 """
-import pytest
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.security_utils import validate_vault_path, sanitize_path, SecurityError
+from src.security_utils import SecurityError, sanitize_path, validate_vault_path
 
 
 class TestPathTraversalAttacks:

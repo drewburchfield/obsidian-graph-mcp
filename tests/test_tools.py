@@ -4,20 +4,22 @@ Unit tests for MCP tools.
 Tests the 3 required tools: search_notes, get_similar_notes, get_connection_graph
 """
 
-import pytest
-import pytest_asyncio
 import asyncio
+
+# Add src to path
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
-# Add src to path
-import sys
+import pytest
+import pytest_asyncio
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.vector_store import PostgreSQLVectorStore, Note
 from src.embedder import VoyageEmbedder
 from src.graph_builder import GraphBuilder
+from src.vector_store import Note, PostgreSQLVectorStore
 
 
 # Fixtures
@@ -68,7 +70,7 @@ It contains billions of neurons that form complex networks.
     embeddings = embedder.embed_batch(texts, input_type="document")
 
     notes = []
-    for (path, title, content), embedding in zip(test_notes_content, embeddings):
+    for (path, title, content), embedding in zip(test_notes_content, embeddings, strict=False):
         if embedding:
             notes.append(Note(
                 path=path,

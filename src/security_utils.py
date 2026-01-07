@@ -9,7 +9,7 @@ Implements defense-in-depth against:
 """
 import os
 from pathlib import Path, PurePosixPath
-from typing import Optional
+
 from loguru import logger
 
 
@@ -93,11 +93,11 @@ def validate_vault_path(user_path: str, vault_root: str) -> str:
     # Check if resolved path is still within vault
     try:
         full_path.relative_to(vault_root_resolved)
-    except ValueError:
+    except ValueError as e:
         raise SecurityError(
             f"Path escapes vault boundaries: {user_path} "
             f"resolves to {full_path}"
-        )
+        ) from e
 
     logger.debug(f"Path validated: {user_path} -> {sanitized}")
     return sanitized
@@ -105,7 +105,7 @@ def validate_vault_path(user_path: str, vault_root: str) -> str:
 
 def validate_note_path_parameter(
     note_path: str,
-    vault_path: Optional[str] = None
+    vault_path: str | None = None
 ) -> str:
     """
     Convenience function to validate note_path parameters from MCP tools.

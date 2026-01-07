@@ -8,16 +8,15 @@ Tests:
 4. Empty file handling
 5. Large file chunking
 """
-import pytest
-import asyncio
-from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch
-from datetime import datetime
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.indexer import scan_vault, extract_title
+from src.indexer import extract_title, scan_vault
 
 
 def test_scan_vault_finds_markdown_files(tmp_vault):

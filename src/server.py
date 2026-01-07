@@ -6,29 +6,30 @@ Provides semantic knowledge graph navigation for Obsidian vaults.
 
 import asyncio
 import os
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from loguru import logger
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool
-from loguru import logger
 
-from .vector_store import PostgreSQLVectorStore, Note, SearchResult
 from .embedder import VoyageEmbedder
+from .exceptions import EmbeddingError
+from .file_watcher import VaultWatcher
 from .graph_builder import GraphBuilder
 from .hub_analyzer import HubAnalyzer
-from .file_watcher import VaultWatcher
-from .security_utils import validate_note_path_parameter, SecurityError
+from .security_utils import SecurityError, validate_note_path_parameter
 from .validation import (
-    validate_search_notes_args,
-    validate_similar_notes_args,
+    ValidationError,
     validate_connection_graph_args,
     validate_hub_notes_args,
     validate_orphaned_notes_args,
-    ValidationError
+    validate_search_notes_args,
+    validate_similar_notes_args,
 )
-from .exceptions import EmbeddingError, DatabaseError
+from .vector_store import PostgreSQLVectorStore
 
 
 @dataclass
@@ -46,11 +47,11 @@ class ServerContext:
     embedder: VoyageEmbedder
     graph_builder: GraphBuilder
     hub_analyzer: HubAnalyzer
-    vault_watcher: Optional[VaultWatcher] = None
+    vault_watcher: VaultWatcher | None = None
 
 
 # Global server context (initialized once at startup)
-_server_context: Optional[ServerContext] = None
+_server_context: ServerContext | None = None
 
 # Create MCP server
 app = Server("obsidian-graph")
@@ -124,7 +125,7 @@ async def initialize_server():
 
 
 @app.list_tools()
-async def list_tools() -> List[Tool]:
+async def list_tools() -> list[Tool]:
     """List available MCP tools."""
     return [
         Tool(
@@ -280,7 +281,7 @@ async def list_tools() -> List[Tool]:
 
 
 @app.call_tool()
-async def call_tool(name: str, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
+async def call_tool(name: str, arguments: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Handle tool calls with comprehensive input validation.
 
@@ -438,7 +439,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[Dict[str, Any]
             if not hubs:
                 response = f"No hub notes found with >={min_connections} connections at threshold {threshold}"
             else:
-                response = f"# Hub Notes (Highly Connected)\n\n"
+                response = "# Hub Notes (Highly Connected)\n\n"
                 response += f"Found {len(hubs)} notes with >={min_connections} connections:\n\n"
                 for i, hub in enumerate(hubs, 1):
                     response += f"{i}. **{hub['title']}** ({hub['connection_count']} connections)\n"
@@ -468,7 +469,7 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[Dict[str, Any]
             if not orphans:
                 response = f"No orphaned notes found with <={max_connections} connections"
             else:
-                response = f"# Orphaned Notes (Isolated)\n\n"
+                response = "# Orphaned Notes (Isolated)\n\n"
                 response += f"Found {len(orphans)} notes with <={max_connections} connections:\n\n"
                 for i, orphan in enumerate(orphans, 1):
                     response += f"{i}. **{orphan['title']}** ({orphan['connection_count']} connections)\n"

@@ -8,11 +8,12 @@ Tests:
 4. Staleness detection and refresh triggering
 5. Lock-based concurrency control
 """
-import pytest
 import asyncio
-from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
 import sys
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

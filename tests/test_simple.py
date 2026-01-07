@@ -4,17 +4,18 @@ Simplified unit tests for Phase 2 validation.
 Tests the 3 required tools with quality baseline verification.
 """
 
-import pytest
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
-import sys
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.vector_store import PostgreSQLVectorStore, Note
 from src.embedder import VoyageEmbedder
 from src.graph_builder import GraphBuilder
+from src.vector_store import Note, PostgreSQLVectorStore
 
 
 @pytest.mark.asyncio
@@ -42,7 +43,7 @@ async def test_phase2_all_tools():
         embeddings = embedder.embed_batch(texts, input_type="document")
 
         notes = []
-        for (path, title, content), embedding in zip(test_notes, embeddings):
+        for (path, title, content), embedding in zip(test_notes, embeddings, strict=False):
             notes.append(Note(
                 path=path,
                 title=title,

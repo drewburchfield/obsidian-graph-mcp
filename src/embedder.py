@@ -9,13 +9,12 @@ Supports automatic chunking for large notes (>32k tokens):
 - JSON caching for security
 """
 
-import os
-import json
 import hashlib
+import json
+import os
 import time
-import asyncio
 from pathlib import Path
-from typing import List, Optional, Tuple
+
 import voyageai
 from loguru import logger
 
@@ -31,7 +30,7 @@ class VoyageEmbedder:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model: str = "voyage-context-3",
         cache_dir: str = "./data/embeddings_cache",
         batch_size: int = 128,
@@ -68,7 +67,7 @@ class VoyageEmbedder:
 
         logger.success(f"VoyageEmbedder initialized: {model}")
 
-    def chunk_text(self, text: str, chunk_size: int = 2000, overlap: int = 0) -> List[str]:
+    def chunk_text(self, text: str, chunk_size: int = 2000, overlap: int = 0) -> list[str]:
         """
         Split text into chunks (for notes >32k tokens).
 
@@ -111,7 +110,7 @@ class VoyageEmbedder:
         text: str,
         chunk_size: int = 2000,
         input_type: str = "document"
-    ) -> Tuple[List[List[float]], int]:
+    ) -> tuple[list[list[float]], int]:
         """
         Embed text with automatic chunking for large content.
 
@@ -176,12 +175,12 @@ class VoyageEmbedder:
                 f"Failed to embed chunked text: {e}",
                 text_preview=text[:100],
                 cause=e
-            )
+            ) from e
 
     def _load_cache_index(self) -> dict:
         """Load cache index from disk."""
         if self.cache_index_path.exists():
-            with open(self.cache_index_path, "r") as f:
+            with open(self.cache_index_path) as f:
                 return json.load(f)
         return {}
 
@@ -207,7 +206,7 @@ class VoyageEmbedder:
         text: str,
         input_type: str = "document",
         use_cache: bool = True
-    ) -> List[float]:
+    ) -> list[float]:
         """
         Generate embedding for a single text.
 
@@ -234,10 +233,10 @@ class VoyageEmbedder:
 
     def embed_batch(
         self,
-        texts: List[str],
+        texts: list[str],
         input_type: str = "document",
         use_cache: bool = True
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         """
         Generate embeddings for multiple texts with caching.
 
@@ -263,7 +262,7 @@ class VoyageEmbedder:
                 if text_hash in self.cache_index:
                     cache_file = Path(self.cache_index[text_hash])
                     if cache_file.exists():
-                        with open(cache_file, "r") as f:
+                        with open(cache_file) as f:
                             embedding = json.load(f)
                         embeddings.append(embedding)
                         continue
@@ -293,7 +292,7 @@ class VoyageEmbedder:
                     filtered_batch = []
                     for text in batch:
                         if not text or not text.strip():
-                            logger.error(f"Rejecting empty string in batch")
+                            logger.error("Rejecting empty string in batch")
                             filtered_batch.append(None)  # Placeholder
                         else:
                             filtered_batch.append(text)
@@ -336,7 +335,7 @@ class VoyageEmbedder:
                     # Cache results using JSON (safer than pickle)
                     if use_cache:
                         # Cache only non-None embeddings
-                        for text, embedding in zip(non_empty, api_embeddings):
+                        for text, embedding in zip(non_empty, api_embeddings, strict=False):
                             text_hash = self._get_text_hash(text)
                             cache_file = self.cache_dir / f"{text_hash}.json"
                             with open(cache_file, "w") as f:
@@ -351,7 +350,7 @@ class VoyageEmbedder:
                         f"Batch embedding failed: {e}",
                         text_preview=batch[0][:100] if batch else "",
                         cause=e
-                    )
+                    ) from e
 
             # Merge cached and new embeddings in correct order
             final_embeddings = [None] * len(texts)

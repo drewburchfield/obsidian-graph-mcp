@@ -8,15 +8,15 @@ Adapted from oachatbot's PostgreSQL store, simplified for Obsidian notes:
 - Adds connection_count materialization for graph queries
 """
 
+import asyncio
 import os
 import time
-import asyncio
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+
 import asyncpg
-from pgvector.asyncpg import register_vector
 from loguru import logger
+from pgvector.asyncpg import register_vector
 
 from .exceptions import DatabaseError
 
@@ -27,9 +27,9 @@ class Note:
     path: str
     title: str
     content: str
-    embedding: List[float]
-    modified_at: Optional[datetime] = None
-    file_size_bytes: Optional[int] = None
+    embedding: list[float]
+    modified_at: datetime | None = None
+    file_size_bytes: int | None = None
     chunk_index: int = 0
     total_chunks: int = 1
 
@@ -78,7 +78,7 @@ class PostgreSQLVectorStore:
         self.max_connections = kwargs.get("max_connections") or int(os.getenv("POSTGRES_MAX_CONNECTIONS", "20"))
         self.connection_timeout = kwargs.get("connection_timeout", 10)
 
-        self.pool: Optional[asyncpg.Pool] = None
+        self.pool: asyncpg.Pool | None = None
 
     async def initialize(self) -> None:
         """Initialize PostgreSQL connection pool with pgvector support."""
@@ -111,9 +111,9 @@ class PostgreSQLVectorStore:
             logger.info(f"PostgreSQL connected: {self.max_connections} max connections")
 
         except asyncpg.PostgresError as e:
-            raise VectorStoreError(f"PostgreSQL connection failed: {e}")
+            raise VectorStoreError(f"PostgreSQL connection failed: {e}") from e
         except Exception as e:
-            raise VectorStoreError(f"PostgreSQL initialization failed: {e}")
+            raise VectorStoreError(f"PostgreSQL initialization failed: {e}") from e
 
     async def _setup_connection(self, conn):
         """Setup each connection with pgvector support."""
@@ -129,10 +129,10 @@ class PostgreSQLVectorStore:
 
     async def search(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         limit: int = 10,
         threshold: float = 0.5
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """
         Semantic search using vector similarity.
 
@@ -192,17 +192,17 @@ class PostgreSQLVectorStore:
                 logger.debug(f"Search: {len(results)} results in {query_time_ms:.1f}ms")
                 return results
 
-        except asyncio.TimeoutError:
-            raise VectorStoreError("Search query timed out")
+        except TimeoutError as e:
+            raise VectorStoreError("Search query timed out") from e
         except Exception as e:
-            raise VectorStoreError(f"Search failed: {e}")
+            raise VectorStoreError(f"Search failed: {e}") from e
 
     async def get_similar_notes(
         self,
         note_path: str,
         limit: int = 10,
         threshold: float = 0.5
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """
         Find notes similar to the given note.
 
@@ -240,7 +240,7 @@ class PostgreSQLVectorStore:
                 return results[:limit]
 
         except Exception as e:
-            raise VectorStoreError(f"Similar notes search failed: {e}")
+            raise VectorStoreError(f"Similar notes search failed: {e}") from e
 
     async def upsert_note(self, note: Note) -> bool:
         """
@@ -287,9 +287,9 @@ class PostgreSQLVectorStore:
             return True
 
         except Exception as e:
-            raise VectorStoreError(f"Note upsert failed: {e}")
+            raise VectorStoreError(f"Note upsert failed: {e}") from e
 
-    async def upsert_batch(self, notes: List[Note]) -> int:
+    async def upsert_batch(self, notes: list[Note]) -> int:
         """
         Insert or update multiple notes in a batch.
 
@@ -329,7 +329,7 @@ class PostgreSQLVectorStore:
             return len(notes)
 
         except Exception as e:
-            raise VectorStoreError(f"Batch upsert failed: {e}")
+            raise VectorStoreError(f"Batch upsert failed: {e}") from e
 
     async def get_note_count(self) -> int:
         """Get total number of indexed notes."""
@@ -340,7 +340,7 @@ class PostgreSQLVectorStore:
             async with self.pool.acquire() as conn:
                 return await conn.fetchval("SELECT COUNT(*) FROM notes")
         except Exception as e:
-            raise VectorStoreError(f"Count query failed: {e}")
+            raise VectorStoreError(f"Count query failed: {e}") from e
 
     async def __aenter__(self):
         """Async context manager entry."""

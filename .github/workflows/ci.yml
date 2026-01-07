@@ -59,6 +59,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Initialize database schema
+        env:
+          PGPASSWORD: testpassword
+        run: psql -h localhost -U obsidian -d obsidian_graph -f src/schema.sql
+
       - name: Run tests
         env:
           POSTGRES_HOST: localhost

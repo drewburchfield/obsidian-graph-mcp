@@ -6,12 +6,13 @@ Tests that concurrent operations are handled safely:
 2. Hub analyzer: Multiple concurrent refresh requests
 3. Stress testing under high concurrency
 """
-import pytest
 import asyncio
+import sys
 import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
-import sys
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -170,14 +171,15 @@ async def test_hub_analyzer_concurrent_refresh_race():
     mock_pool.acquire = MagicMock(return_value=MockAcquire())
 
     # Mock queries to simulate stale counts (triggers refresh)
+    # Note: stale_count/total_count must be > 0.5 to trigger refresh
     mock_conn.fetchval = AsyncMock(side_effect=[
-        500,   # stale_count (first call)
+        501,   # stale_count (first call) - 501/1000 > 0.5 triggers refresh
         1000,  # total_count (second call)
-        500, 1000, 500, 1000, 500, 1000,  # Repeat for concurrent calls
-        500, 1000, 500, 1000, 500, 1000,
-        500, 1000, 500, 1000, 500, 1000,
-        500, 1000, 500, 1000, 500, 1000,
-        500, 1000, 500, 1000, 500, 1000,
+        501, 1000, 501, 1000, 501, 1000,  # Repeat for concurrent calls
+        501, 1000, 501, 1000, 501, 1000,
+        501, 1000, 501, 1000, 501, 1000,
+        501, 1000, 501, 1000, 501, 1000,
+        501, 1000, 501, 1000, 501, 1000,
     ])
 
     # Mock fetch for refresh operation

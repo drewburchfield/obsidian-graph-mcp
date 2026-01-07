@@ -7,10 +7,11 @@ Tests that database passwords are:
 3. Synchronized between MCP server and PostgreSQL container
 4. Not logged or exposed in error messages
 """
-import pytest
 import os
 import re
 from pathlib import Path
+
+import pytest
 
 
 def test_no_hardcoded_passwords_in_docker_compose():
@@ -76,9 +77,9 @@ def test_password_minimum_entropy():
     if not password:
         pytest.skip("POSTGRES_PASSWORD not set in environment")
 
-    # Skip test if using placeholder values
-    if password in ["changeme", "your_generated_password_here"]:
-        pytest.skip("Using placeholder password - run generate-db-password.sh first")
+    # Skip test if using placeholder or CI test values
+    if password in ["changeme", "your_generated_password_here", "testpassword"]:
+        pytest.skip("Using placeholder/CI password - run generate-db-password.sh for production")
 
     # Minimum 32 characters (we generate 48)
     assert len(password) >= 32, \
@@ -99,8 +100,8 @@ def test_password_not_in_common_weak_list():
     """Ensure password is not a common weak password."""
     password = os.getenv("POSTGRES_PASSWORD", "")
 
-    if not password or password in ["your_generated_password_here"]:
-        pytest.skip("POSTGRES_PASSWORD not set or using placeholder")
+    if not password or password in ["your_generated_password_here", "testpassword"]:
+        pytest.skip("POSTGRES_PASSWORD not set or using placeholder/CI password")
 
     # List of passwords that should never be used
     weak_passwords = [

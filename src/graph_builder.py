@@ -4,13 +4,12 @@ Graph builder for multi-hop connection discovery.
 Uses Breadth-First Search (BFS) to build connection graphs from a starting note.
 """
 
-import asyncio
 from collections import deque
-from typing import Dict, List, Set, Optional
+
 from loguru import logger
 
-from .vector_store import PostgreSQLVectorStore
 from .exceptions import DatabaseError
+from .vector_store import PostgreSQLVectorStore
 
 
 class GraphBuilder:
@@ -35,7 +34,7 @@ class GraphBuilder:
         depth: int = 3,
         max_per_level: int = 5,
         threshold: float = 0.5
-    ) -> Dict:
+    ) -> dict:
         """
         Build multi-hop connection graph using BFS.
 
@@ -58,7 +57,7 @@ class GraphBuilder:
         max_per_level = max(1, min(10, max_per_level))  # Clamp to [1, 10]
 
         # Initialize BFS
-        visited: Set[str] = set()
+        visited: set[str] = set()
         queue = deque([(note_path, 0, None)])  # (path, level, parent_path)
         nodes = {}
         edges = []
@@ -142,7 +141,7 @@ class GraphBuilder:
             }
         }
 
-    async def _get_note_info(self, note_path: str) -> Optional[Dict]:
+    async def _get_note_info(self, note_path: str) -> dict | None:
         """
         Get basic note information (path and title).
 

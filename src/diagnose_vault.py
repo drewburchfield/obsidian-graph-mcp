@@ -2,7 +2,8 @@
 import os
 import sys
 from pathlib import Path
-sys.path.insert(0, '/app')
+
+sys.path.insert(0, "/app")
 
 from src.embedder import VoyageEmbedder
 from src.exceptions import EmbeddingError
@@ -20,7 +21,7 @@ successful = 0
 
 for i, file_path in enumerate(md_files, 1):
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read().strip()
 
         rel_path = str(file_path.relative_to(vault_path))
@@ -49,7 +50,7 @@ for i, file_path in enumerate(md_files, 1):
         print(f"[{i}/{len(md_files)}] ERROR: {rel_path} - {e}")
 
 print(f"\n{'='*60}")
-print(f"Summary:")
+print("Summary:")
 print(f"  Successful: {successful}/{len(md_files)}")
 print(f"  Empty files: {len(empty_files)}")
 print(f"  Problematic: {len(problematic_files)}")

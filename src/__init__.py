@@ -11,14 +11,14 @@ Provides semantic search and graph analysis for Obsidian vaults using:
 
 __version__ = "1.0.0"
 
-from .vector_store import PostgreSQLVectorStore, Note, SearchResult, VectorStoreError
 from .embedder import VoyageEmbedder
+from .exceptions import DatabaseError, EmbeddingError, ObsidianGraphError
+from .file_watcher import VaultWatcher
 from .graph_builder import GraphBuilder
 from .hub_analyzer import HubAnalyzer
-from .file_watcher import VaultWatcher
-from .security_utils import validate_note_path_parameter, SecurityError
+from .security_utils import SecurityError, validate_note_path_parameter
 from .validation import ValidationError
-from .exceptions import EmbeddingError, DatabaseError, ObsidianGraphError
+from .vector_store import Note, PostgreSQLVectorStore, SearchResult, VectorStoreError
 
 __all__ = [
     # Vector Store

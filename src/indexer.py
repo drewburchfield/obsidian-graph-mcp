@@ -4,19 +4,19 @@ Initial vault indexing for Obsidian Graph MCP Server.
 Scans Obsidian vault, generates embeddings, and populates PostgreSQL.
 """
 
-import os
 import asyncio
+import os
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
-from typing import List
+
 from loguru import logger
 
-from .vector_store import PostgreSQLVectorStore, Note
 from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
+from .vector_store import Note, PostgreSQLVectorStore
 
 
-def scan_vault(vault_path: str) -> List[Path]:
+def scan_vault(vault_path: str) -> list[Path]:
     """
     Scan Obsidian vault for all markdown files.
 
@@ -84,7 +84,7 @@ async def index_vault(vault_path: str, batch_size: int = 100):
             notes_data = []
             for file_path in batch_files:
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, encoding="utf-8") as f:
                         content = f.read().strip()
 
                     # Skip empty files (Voyage API rejects empty strings)
@@ -94,7 +94,7 @@ async def index_vault(vault_path: str, batch_size: int = 100):
 
                     # Get file stats
                     stat = file_path.stat()
-                    modified_at = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+                    modified_at = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
                     file_size = stat.st_size
 
                     # Get vault-relative path
@@ -162,7 +162,7 @@ async def index_vault(vault_path: str, batch_size: int = 100):
                     chunks = embedder.chunk_text(note_data["content"], chunk_size=2000, overlap=0)
                     logger.info(f"Chunked {note_data['path']}: {total_chunks} chunks")
 
-                    for chunk_idx, (chunk_text, embedding) in enumerate(zip(chunks, embeddings_list)):
+                    for chunk_idx, (chunk_text, embedding) in enumerate(zip(chunks, embeddings_list, strict=False)):
                         notes.append(Note(
                             path=note_data["path"],
                             title=note_data["title"],
