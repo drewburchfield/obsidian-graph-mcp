@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install ruff black mypy
+          pip install -r requirements.txt
+
+      - name: Run ruff
+        run: ruff check src/ tests/
+
+      - name: Run black (check only)
+        run: black --check src/ tests/
+
+      - name: Run mypy
+        run: mypy src/ --ignore-missing-imports
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: obsidian
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: obsidian_graph
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: obsidian
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: obsidian_graph
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+        run: pytest tests/ -v --ignore=tests/test_e2e.py
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Run security scan
+        run: bandit -r src/ -ll
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t obsidian-graph-mcp .
+
+      - name: Verify image runs
+        run: |
+          docker run --rm obsidian-graph-mcp python -c "from src.server import app; print('Import successful')"
