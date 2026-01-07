@@ -52,17 +52,11 @@ class HubAnalyzer:
         try:
             task.result()  # Raises exception if task failed
         except Exception as e:
-            logger.error(
-                f"Background connection count refresh failed: {e}",
-                exc_info=True
-            )
+            logger.error(f"Background connection count refresh failed: {e}", exc_info=True)
             # Non-fatal - queries will work with stale counts
 
     async def get_hub_notes(
-        self,
-        min_connections: int = 10,
-        threshold: float = 0.5,
-        limit: int = 20
+        self, min_connections: int = 10, threshold: float = 0.5, limit: int = 20
     ) -> list[dict]:
         """
         Find highly connected notes (hubs).
@@ -93,15 +87,11 @@ class HubAnalyzer:
                     LIMIT $2
                     """,
                     min_connections,
-                    limit
+                    limit,
                 )
 
             hubs = [
-                {
-                    "path": r["path"],
-                    "title": r["title"],
-                    "connection_count": r["connection_count"]
-                }
+                {"path": r["path"], "title": r["title"], "connection_count": r["connection_count"]}
                 for r in results
             ]
 
@@ -113,10 +103,7 @@ class HubAnalyzer:
             raise
 
     async def get_orphaned_notes(
-        self,
-        max_connections: int = 2,
-        threshold: float = 0.5,
-        limit: int = 20
+        self, max_connections: int = 2, threshold: float = 0.5, limit: int = 20
     ) -> list[dict]:
         """
         Find isolated notes (orphans).
@@ -147,7 +134,7 @@ class HubAnalyzer:
                     LIMIT $2
                     """,
                     max_connections,
-                    limit
+                    limit,
                 )
 
             orphans = [
@@ -155,7 +142,7 @@ class HubAnalyzer:
                     "path": r["path"],
                     "title": r["title"],
                     "connection_count": r["connection_count"],
-                    "modified_at": r["modified_at"].isoformat() if r["modified_at"] else None
+                    "modified_at": r["modified_at"].isoformat() if r["modified_at"] else None,
                 }
                 for r in results
             ]
@@ -194,7 +181,9 @@ class HubAnalyzer:
                 total_count = await conn.fetchval("SELECT COUNT(*) FROM notes")
 
                 if total_count > 0 and stale_count / total_count > 0.5:
-                    logger.info(f"{stale_count}/{total_count} notes have stale counts, refreshing...")
+                    logger.info(
+                        f"{stale_count}/{total_count} notes have stale counts, refreshing..."
+                    )
                     # Trigger background refresh with error handling
                     task = asyncio.create_task(self._refresh_all_counts(threshold))
                     task.add_done_callback(self._handle_refresh_error)
@@ -223,7 +212,9 @@ class HubAnalyzer:
             try:
                 async with self.store.pool.acquire() as conn:
                     # Get all notes
-                    all_notes = await conn.fetch("SELECT path, embedding FROM notes WHERE embedding IS NOT NULL")
+                    all_notes = await conn.fetch(
+                        "SELECT path, embedding FROM notes WHERE embedding IS NOT NULL"
+                    )
 
                     # Update connection_count for each note
                     distance_threshold = 1.0 - threshold
@@ -240,7 +231,7 @@ class HubAnalyzer:
                             """,
                             note["path"],
                             note["embedding"],
-                            distance_threshold
+                            distance_threshold,
                         )
 
                         # Update materialized column
@@ -252,7 +243,7 @@ class HubAnalyzer:
                             WHERE path = $2
                             """,
                             count,
-                            note["path"]
+                            note["path"],
                         )
 
                 logger.success("Connection count refresh complete")

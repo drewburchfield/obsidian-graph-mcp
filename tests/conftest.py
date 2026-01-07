@@ -7,6 +7,7 @@ Provides reusable fixtures for:
 - Temporary vaults with test data
 - Server contexts for integration testing
 """
+
 import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
@@ -71,12 +72,14 @@ def mock_embedder():
     embedder.embed_batch = MagicMock(return_value=[dummy_embedding])
     embedder.embed_with_chunks = MagicMock(return_value=([dummy_embedding], 1))
     embedder.chunk_text = MagicMock(return_value=["chunk1"])
-    embedder.get_cache_stats = MagicMock(return_value={
-        "total_cached": 0,
-        "cache_size_mb": 0.0,
-        "cache_dir": "/tmp/cache",
-        "model": "voyage-context-3"
-    })
+    embedder.get_cache_stats = MagicMock(
+        return_value={
+            "total_cached": 0,
+            "cache_size_mb": 0.0,
+            "cache_dir": "/tmp/cache",
+            "model": "voyage-context-3",
+        }
+    )
 
     return embedder
 
@@ -116,8 +119,7 @@ async def tmp_vault(tmp_path):
     folder.mkdir()
 
     (folder / "note3.md").write_text(
-        "# Nested Note\n\n"
-        "This note is in a subfolder to test path handling."
+        "# Nested Note\n\n" "This note is in a subfolder to test path handling."
     )
 
     # Create empty file for edge case testing
@@ -153,7 +155,7 @@ async def server_context(mock_store, mock_embedder):
         embedder=mock_embedder,
         graph_builder=graph_builder,
         hub_analyzer=hub_analyzer,
-        vault_watcher=None
+        vault_watcher=None,
     )
 
     # Inject into global for call_tool()
@@ -175,13 +177,13 @@ def sample_search_results():
             path="notes/ml.md",
             title="Machine Learning",
             content="Machine learning is a subset of AI...",
-            similarity=0.95
+            similarity=0.95,
         ),
         SearchResult(
             path="notes/python.md",
             title="Python",
             content="Python is a programming language...",
-            similarity=0.82
+            similarity=0.82,
         ),
     ]
 
@@ -200,7 +202,7 @@ def sample_notes():
             modified_at=datetime.now(),
             file_size_bytes=100,
             chunk_index=0,
-            total_chunks=1
+            total_chunks=1,
         ),
         Note(
             path="test2.md",
@@ -210,6 +212,6 @@ def sample_notes():
             modified_at=datetime.now(),
             file_size_bytes=150,
             chunk_index=0,
-            total_chunks=1
+            total_chunks=1,
         ),
     ]

@@ -7,6 +7,7 @@ Implements defense-in-depth against:
 - Null byte injection
 - Symbolic link exploitation
 """
+
 import os
 from pathlib import Path, PurePosixPath
 
@@ -15,6 +16,7 @@ from loguru import logger
 
 class SecurityError(Exception):
     """Raised when security validation fails."""
+
     pass
 
 
@@ -32,7 +34,7 @@ def sanitize_path(user_path: str) -> str:
         SecurityError: If path contains dangerous components
     """
     # Check for null bytes (common in path injection attacks)
-    if '\x00' in user_path:
+    if "\x00" in user_path:
         raise SecurityError("Null byte detected in path")
 
     # Normalize path (resolve . and .., remove duplicate slashes)
@@ -83,7 +85,7 @@ def validate_vault_path(user_path: str, vault_root: str) -> str:
 
     # 3. Check for parent directory traversal in components
     path_parts = Path(sanitized).parts
-    if '..' in path_parts:
+    if ".." in path_parts:
         raise SecurityError(f"Path traversal detected: {user_path}")
 
     # 4. Resolve against vault root and ensure it stays within bounds
@@ -95,18 +97,14 @@ def validate_vault_path(user_path: str, vault_root: str) -> str:
         full_path.relative_to(vault_root_resolved)
     except ValueError as e:
         raise SecurityError(
-            f"Path escapes vault boundaries: {user_path} "
-            f"resolves to {full_path}"
+            f"Path escapes vault boundaries: {user_path} " f"resolves to {full_path}"
         ) from e
 
     logger.debug(f"Path validated: {user_path} -> {sanitized}")
     return sanitized
 
 
-def validate_note_path_parameter(
-    note_path: str,
-    vault_path: str | None = None
-) -> str:
+def validate_note_path_parameter(note_path: str, vault_path: str | None = None) -> str:
     """
     Convenience function to validate note_path parameters from MCP tools.
 

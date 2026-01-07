@@ -8,6 +8,7 @@ Tests:
 4. Staleness detection and refresh triggering
 5. Lock-based concurrency control
 """
+
 import asyncio
 import sys
 from pathlib import Path
@@ -27,10 +28,12 @@ async def test_get_hub_notes_queries_correctly(mock_store):
 
     # Mock database response
     mock_conn = AsyncMock()
-    mock_conn.fetch = AsyncMock(return_value=[
-        {"path": "hub1.md", "title": "Hub 1", "connection_count": 25},
-        {"path": "hub2.md", "title": "Hub 2", "connection_count": 15},
-    ])
+    mock_conn.fetch = AsyncMock(
+        return_value=[
+            {"path": "hub1.md", "title": "Hub 1", "connection_count": 25},
+            {"path": "hub2.md", "title": "Hub 2", "connection_count": 15},
+        ]
+    )
 
     class MockAcquire:
         async def __aenter__(self):
@@ -63,10 +66,12 @@ async def test_get_orphaned_notes_queries_correctly(mock_store):
 
     # Mock database response
     mock_conn = AsyncMock()
-    mock_conn.fetch = AsyncMock(return_value=[
-        {"path": "orphan1.md", "title": "Orphan 1", "connection_count": 0, "modified_at": None},
-        {"path": "orphan2.md", "title": "Orphan 2", "connection_count": 1, "modified_at": None},
-    ])
+    mock_conn.fetch = AsyncMock(
+        return_value=[
+            {"path": "orphan1.md", "title": "Orphan 1", "connection_count": 0, "modified_at": None},
+            {"path": "orphan2.md", "title": "Orphan 2", "connection_count": 1, "modified_at": None},
+        ]
+    )
 
     class MockAcquire:
         async def __aenter__(self):
@@ -97,10 +102,12 @@ async def test_refresh_lock_prevents_concurrent_execution(mock_store):
 
     # Mock database
     mock_conn = AsyncMock()
-    mock_conn.fetch = AsyncMock(return_value=[
-        {"path": "note1.md", "embedding": [0.1] * 1024},
-        {"path": "note2.md", "embedding": [0.2] * 1024},
-    ])
+    mock_conn.fetch = AsyncMock(
+        return_value=[
+            {"path": "note1.md", "embedding": [0.1] * 1024},
+            {"path": "note2.md", "embedding": [0.2] * 1024},
+        ]
+    )
     mock_conn.fetchval = AsyncMock(return_value=0)
     mock_conn.execute = AsyncMock()
 
@@ -129,10 +136,7 @@ async def test_refresh_lock_prevents_concurrent_execution(mock_store):
     analyzer._refresh_all_counts = tracked_refresh
 
     # Start 5 concurrent refreshes
-    tasks = [
-        asyncio.create_task(tracked_refresh(0.5))
-        for _ in range(5)
-    ]
+    tasks = [asyncio.create_task(tracked_refresh(0.5)) for _ in range(5)]
 
     await asyncio.gather(*tasks)
 
@@ -178,11 +182,13 @@ async def test_refresh_updates_connection_counts(mock_store):
     mock_conn = AsyncMock()
 
     # First call to fetch returns all notes
-    mock_conn.fetch = AsyncMock(return_value=[
-        {"path": "note1.md", "embedding": [0.1] * 1024},
-        {"path": "note2.md", "embedding": [0.2] * 1024},
-        {"path": "note3.md", "embedding": [0.3] * 1024},
-    ])
+    mock_conn.fetch = AsyncMock(
+        return_value=[
+            {"path": "note1.md", "embedding": [0.1] * 1024},
+            {"path": "note2.md", "embedding": [0.2] * 1024},
+            {"path": "note3.md", "embedding": [0.3] * 1024},
+        ]
+    )
 
     # fetchval returns connection counts
     mock_conn.fetchval = AsyncMock(return_value=2)  # Each note has 2 connections
@@ -212,10 +218,7 @@ async def test_staleness_check_triggers_refresh_when_needed(mock_store):
 
     # Mock database: 60% of notes have connection_count = 0 (stale)
     mock_conn = AsyncMock()
-    mock_conn.fetchval = AsyncMock(side_effect=[
-        600,   # stale_count
-        1000   # total_count
-    ])
+    mock_conn.fetchval = AsyncMock(side_effect=[600, 1000])  # stale_count  # total_count
 
     class MockAcquire:
         async def __aenter__(self):
@@ -248,10 +251,7 @@ async def test_staleness_check_skips_refresh_when_fresh(mock_store):
 
     # Mock database: only 20% of notes stale (<50% threshold)
     mock_conn = AsyncMock()
-    mock_conn.fetchval = AsyncMock(side_effect=[
-        200,   # stale_count
-        1000   # total_count
-    ])
+    mock_conn.fetchval = AsyncMock(side_effect=[200, 1000])  # stale_count  # total_count
 
     class MockAcquire:
         async def __aenter__(self):

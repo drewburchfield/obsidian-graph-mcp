@@ -43,6 +43,7 @@ class ServerContext:
         - Foundation for future full DI migration
         - No breaking changes (internal refactor)
     """
+
     store: PostgreSQLVectorStore
     embedder: VoyageEmbedder
     graph_builder: GraphBuilder
@@ -68,7 +69,7 @@ async def initialize_server():
         model="voyage-context-3",
         cache_dir=os.getenv("CACHE_DIR", str(Path.home() / ".obsidian-graph" / "cache")),
         batch_size=int(os.getenv("EMBEDDING_BATCH_SIZE", "128")),
-        requests_per_minute=int(os.getenv("EMBEDDING_REQUESTS_PER_MINUTE", "300"))
+        requests_per_minute=int(os.getenv("EMBEDDING_REQUESTS_PER_MINUTE", "300")),
     )
 
     # Initialize PostgreSQL vector store
@@ -79,7 +80,7 @@ async def initialize_server():
         user=os.getenv("POSTGRES_USER", "obsidian"),
         password=os.getenv("POSTGRES_PASSWORD"),
         min_connections=int(os.getenv("POSTGRES_MIN_CONNECTIONS", "5")),
-        max_connections=int(os.getenv("POSTGRES_MAX_CONNECTIONS", "20"))
+        max_connections=int(os.getenv("POSTGRES_MAX_CONNECTIONS", "20")),
     )
 
     await store.initialize()
@@ -98,7 +99,7 @@ async def initialize_server():
             vault_path,
             store,
             embedder,
-            debounce_seconds=int(os.getenv("OBSIDIAN_DEBOUNCE_SECONDS", "30"))
+            debounce_seconds=int(os.getenv("OBSIDIAN_DEBOUNCE_SECONDS", "30")),
         )
 
         # Start file watching first (creates event_handler)
@@ -118,7 +119,7 @@ async def initialize_server():
         embedder=embedder,
         graph_builder=graph_builder,
         hub_analyzer=hub_analyzer,
-        vault_watcher=vault_watcher
+        vault_watcher=vault_watcher,
     )
 
     logger.success("Server initialized successfully")
@@ -134,149 +135,146 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Natural language search query"
-                    },
+                    "query": {"type": "string", "description": "Natural language search query"},
                     "limit": {
                         "type": "integer",
                         "description": "Maximum number of results (1-50)",
                         "default": 10,
                         "minimum": 1,
-                        "maximum": 50
+                        "maximum": 50,
                     },
                     "threshold": {
                         "type": "number",
                         "description": "Minimum similarity score (0.0-1.0)",
                         "default": 0.5,
                         "minimum": 0.0,
-                        "maximum": 1.0
-                    }
+                        "maximum": 1.0,
+                    },
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         ),
         Tool(
-            name= "get_similar_notes",
-            description= "Find notes semantically similar to a given note",
-            inputSchema= {
+            name="get_similar_notes",
+            description="Find notes semantically similar to a given note",
+            inputSchema={
                 "type": "object",
                 "properties": {
                     "note_path": {
                         "type": "string",
-                        "description": "Path to the source note (vault-relative)"
+                        "description": "Path to the source note (vault-relative)",
                     },
                     "limit": {
                         "type": "integer",
                         "description": "Maximum number of results (1-50)",
                         "default": 10,
                         "minimum": 1,
-                        "maximum": 50
+                        "maximum": 50,
                     },
                     "threshold": {
                         "type": "number",
                         "description": "Minimum similarity score (0.0-1.0)",
                         "default": 0.5,
                         "minimum": 0.0,
-                        "maximum": 1.0
-                    }
+                        "maximum": 1.0,
+                    },
                 },
-                "required": ["note_path"]
-            }
+                "required": ["note_path"],
+            },
         ),
         Tool(
             name="get_connection_graph",
-            description= "Build multi-hop connection graph using BFS traversal to discover relationships",
-            inputSchema= {
+            description="Build multi-hop connection graph using BFS traversal to discover relationships",
+            inputSchema={
                 "type": "object",
                 "properties": {
                     "note_path": {
                         "type": "string",
-                        "description": "Starting note path (vault-relative)"
+                        "description": "Starting note path (vault-relative)",
                     },
                     "depth": {
                         "type": "integer",
                         "description": "Maximum levels to traverse (1-5)",
                         "default": 3,
                         "minimum": 1,
-                        "maximum": 5
+                        "maximum": 5,
                     },
                     "max_per_level": {
                         "type": "integer",
                         "description": "Maximum nodes per level (1-10)",
                         "default": 5,
                         "minimum": 1,
-                        "maximum": 10
+                        "maximum": 10,
                     },
                     "threshold": {
                         "type": "number",
                         "description": "Minimum similarity score (0.0-1.0)",
                         "default": 0.5,
                         "minimum": 0.0,
-                        "maximum": 1.0
-                    }
+                        "maximum": 1.0,
+                    },
                 },
-                "required": ["note_path"]
-            }
+                "required": ["note_path"],
+            },
         ),
         Tool(
             name="get_hub_notes",
-            description= "Identify highly connected notes (conceptual hubs/anchors)",
-            inputSchema= {
+            description="Identify highly connected notes (conceptual hubs/anchors)",
+            inputSchema={
                 "type": "object",
                 "properties": {
                     "min_connections": {
                         "type": "integer",
                         "description": "Minimum connection count to qualify as hub",
                         "default": 10,
-                        "minimum": 1
+                        "minimum": 1,
                     },
                     "threshold": {
                         "type": "number",
                         "description": "Similarity threshold for counting connections (0.0-1.0)",
                         "default": 0.5,
                         "minimum": 0.0,
-                        "maximum": 1.0
+                        "maximum": 1.0,
                     },
                     "limit": {
                         "type": "integer",
                         "description": "Maximum results (1-50)",
                         "default": 20,
                         "minimum": 1,
-                        "maximum": 50
-                    }
-                }
-            }
+                        "maximum": 50,
+                    },
+                },
+            },
         ),
         Tool(
             name="get_orphaned_notes",
-            description= "Find isolated notes with few connections",
-            inputSchema= {
+            description="Find isolated notes with few connections",
+            inputSchema={
                 "type": "object",
                 "properties": {
                     "max_connections": {
                         "type": "integer",
                         "description": "Maximum connection count to qualify as orphan",
                         "default": 2,
-                        "minimum": 0
+                        "minimum": 0,
                     },
                     "threshold": {
                         "type": "number",
                         "description": "Similarity threshold for counting connections (0.0-1.0)",
                         "default": 0.5,
                         "minimum": 0.0,
-                        "maximum": 1.0
+                        "maximum": 1.0,
                     },
                     "limit": {
                         "type": "integer",
                         "description": "Maximum results (1-50)",
                         "default": 20,
                         "minimum": 1,
-                        "maximum": 50
-                    }
-                }
-            }
-        )
+                        "maximum": 50,
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -321,7 +319,9 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[dict[str, Any]
             # Format results
             response = f"Found {len(results)} notes:\n\n"
             for i, result in enumerate(results, 1):
-                snippet = result.content[:200] + "..." if len(result.content) > 200 else result.content
+                snippet = (
+                    result.content[:200] + "..." if len(result.content) > 200 else result.content
+                )
                 response += f"{i}. **{result.title}** (similarity: {result.similarity:.3f})\n"
                 response += f"   Path: `{result.path}`\n"
                 response += f"   {snippet}\n\n"
@@ -342,8 +342,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[dict[str, Any]
 
             # SECURITY: Validate note_path before processing
             note_path = validate_note_path_parameter(
-                validated["note_path"],
-                vault_path=os.getenv("OBSIDIAN_VAULT_PATH", "/vault")
+                validated["note_path"], vault_path=os.getenv("OBSIDIAN_VAULT_PATH", "/vault")
             )
             limit = validated["limit"]
             threshold = validated["threshold"]
@@ -376,8 +375,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[dict[str, Any]
 
             # SECURITY: Validate note_path before processing
             note_path = validate_note_path_parameter(
-                validated["note_path"],
-                vault_path=os.getenv("OBSIDIAN_VAULT_PATH", "/vault")
+                validated["note_path"], vault_path=os.getenv("OBSIDIAN_VAULT_PATH", "/vault")
             )
             depth = validated["depth"]
             max_per_level = validated["max_per_level"]
@@ -395,8 +393,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[dict[str, Any]
 
             # Group nodes by level
             nodes_by_level = {}
-            for node in graph['nodes']:
-                level = node['level']
+            for node in graph["nodes"]:
+                level = node["level"]
                 if level not in nodes_by_level:
                     nodes_by_level[level] = []
                 nodes_by_level[level].append(node)
@@ -406,9 +404,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[dict[str, Any]
                 response += f"\n## Level {level}\n"
                 for node in nodes_by_level[level]:
                     response += f"- **{node['title']}** (`{node['path']}`)\n"
-                    if node['parent_path']:
+                    if node["parent_path"]:
                         # Find edge to get similarity
-                        edge = next((e for e in graph['edges'] if e['target'] == node['path']), None)
+                        edge = next(
+                            (e for e in graph["edges"] if e["target"] == node["path"]), None
+                        )
                         if edge:
                             response += f"  Connected from: `{node['parent_path']}` (similarity: {edge['similarity']:.3f})\n"
 
@@ -472,9 +472,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[dict[str, Any]
                 response = "# Orphaned Notes (Isolated)\n\n"
                 response += f"Found {len(orphans)} notes with <={max_connections} connections:\n\n"
                 for i, orphan in enumerate(orphans, 1):
-                    response += f"{i}. **{orphan['title']}** ({orphan['connection_count']} connections)\n"
+                    response += (
+                        f"{i}. **{orphan['title']}** ({orphan['connection_count']} connections)\n"
+                    )
                     response += f"   Path: `{orphan['path']}`\n"
-                    if orphan['modified_at']:
+                    if orphan["modified_at"]:
                         response += f"   Modified: {orphan['modified_at']}\n"
                     response += "\n"
 

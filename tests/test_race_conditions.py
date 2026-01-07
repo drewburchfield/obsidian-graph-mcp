@@ -6,6 +6,7 @@ Tests that concurrent operations are handled safely:
 2. Hub analyzer: Multiple concurrent refresh requests
 3. Stress testing under high concurrency
 """
+
 import asyncio
 import sys
 import time
@@ -51,7 +52,7 @@ async def test_file_watcher_concurrent_debounce_race(tmp_path):
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=0.5  # Short debounce for testing
+        debounce_seconds=0.5,  # Short debounce for testing
     )
 
     # Track number of re-index calls
@@ -83,8 +84,9 @@ async def test_file_watcher_concurrent_debounce_race(tmp_path):
     # Assert: Should have exactly 1 re-index, not 10
     # This will FAIL without proper locking (race condition exists)
     # This will PASS after fix is applied
-    assert reindex_count == 1, \
-        f"Expected 1 re-index for same file, got {reindex_count} (RACE CONDITION!)"
+    assert (
+        reindex_count == 1
+    ), f"Expected 1 re-index for same file, got {reindex_count} (RACE CONDITION!)"
 
 
 @pytest.mark.asyncio
@@ -113,7 +115,7 @@ async def test_file_watcher_different_files_concurrent(tmp_path):
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=0.2
+        debounce_seconds=0.2,
     )
 
     # Track re-indexes per file
@@ -172,21 +174,50 @@ async def test_hub_analyzer_concurrent_refresh_race():
 
     # Mock queries to simulate stale counts (triggers refresh)
     # Note: stale_count/total_count must be > 0.5 to trigger refresh
-    mock_conn.fetchval = AsyncMock(side_effect=[
-        501,   # stale_count (first call) - 501/1000 > 0.5 triggers refresh
-        1000,  # total_count (second call)
-        501, 1000, 501, 1000, 501, 1000,  # Repeat for concurrent calls
-        501, 1000, 501, 1000, 501, 1000,
-        501, 1000, 501, 1000, 501, 1000,
-        501, 1000, 501, 1000, 501, 1000,
-        501, 1000, 501, 1000, 501, 1000,
-    ])
+    mock_conn.fetchval = AsyncMock(
+        side_effect=[
+            501,  # stale_count (first call) - 501/1000 > 0.5 triggers refresh
+            1000,  # total_count (second call)
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,  # Repeat for concurrent calls
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+            501,
+            1000,
+        ]
+    )
 
     # Mock fetch for refresh operation
-    mock_conn.fetch = AsyncMock(return_value=[
-        {"path": "note1.md", "embedding": [0.1] * 1024},
-        {"path": "note2.md", "embedding": [0.2] * 1024},
-    ])
+    mock_conn.fetch = AsyncMock(
+        return_value=[
+            {"path": "note1.md", "embedding": [0.1] * 1024},
+            {"path": "note2.md", "embedding": [0.2] * 1024},
+        ]
+    )
     mock_conn.execute = AsyncMock()
 
     mock_store = MagicMock()
@@ -211,10 +242,7 @@ async def test_hub_analyzer_concurrent_refresh_race():
     analyzer._refresh_all_counts = tracked_refresh
 
     # Simulate 20 concurrent requests triggering refresh
-    tasks = [
-        analyzer._ensure_fresh_counts(0.5)
-        for _ in range(20)
-    ]
+    tasks = [analyzer._ensure_fresh_counts(0.5) for _ in range(20)]
 
     await asyncio.gather(*tasks)
 
@@ -224,8 +252,7 @@ async def test_hub_analyzer_concurrent_refresh_race():
     # Assert: Should trigger exactly 1 refresh
     # This will FAIL without proper locking (race condition exists)
     # This will PASS after fix is applied
-    assert refresh_count == 1, \
-        f"Expected 1 refresh, got {refresh_count} (RACE CONDITION!)"
+    assert refresh_count == 1, f"Expected 1 refresh, got {refresh_count} (RACE CONDITION!)"
 
 
 @pytest.mark.stress
@@ -255,7 +282,7 @@ async def test_file_watcher_stress_many_files(tmp_path):
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=0.3
+        debounce_seconds=0.3,
     )
 
     reindex_count = 0
@@ -280,5 +307,4 @@ async def test_file_watcher_stress_many_files(tmp_path):
     await asyncio.sleep(1.0)
 
     # Verify: 50 files × 1 final re-index each = 50
-    assert reindex_count == 50, \
-        f"Expected 50 re-indexes (one per file), got {reindex_count}"
+    assert reindex_count == 50, f"Expected 50 re-indexes (one per file), got {reindex_count}"

@@ -24,6 +24,7 @@ from .exceptions import DatabaseError
 @dataclass
 class Note:
     """Represents an Obsidian note or note chunk with embedding."""
+
     path: str
     title: str
     content: str
@@ -37,6 +38,7 @@ class Note:
 @dataclass
 class SearchResult:
     """Result from vector similarity search."""
+
     path: str
     title: str
     similarity: float  # 0.0 to 1.0
@@ -50,6 +52,7 @@ class VectorStoreError(DatabaseError):
     Inherits from DatabaseError for consistency with exception hierarchy.
     This allows catching either VectorStoreError specifically or DatabaseError generally.
     """
+
     pass
 
 
@@ -71,11 +74,17 @@ class PostgreSQLVectorStore:
 
         # Validate required parameters
         if not self.password:
-            raise VectorStoreError("PostgreSQL password is required (set POSTGRES_PASSWORD env var)")
+            raise VectorStoreError(
+                "PostgreSQL password is required (set POSTGRES_PASSWORD env var)"
+            )
 
         # Connection pool configuration
-        self.min_connections = kwargs.get("min_connections") or int(os.getenv("POSTGRES_MIN_CONNECTIONS", "5"))
-        self.max_connections = kwargs.get("max_connections") or int(os.getenv("POSTGRES_MAX_CONNECTIONS", "20"))
+        self.min_connections = kwargs.get("min_connections") or int(
+            os.getenv("POSTGRES_MIN_CONNECTIONS", "5")
+        )
+        self.max_connections = kwargs.get("max_connections") or int(
+            os.getenv("POSTGRES_MAX_CONNECTIONS", "20")
+        )
         self.connection_timeout = kwargs.get("connection_timeout", 10)
 
         self.pool: asyncpg.Pool | None = None
@@ -83,14 +92,16 @@ class PostgreSQLVectorStore:
     async def initialize(self) -> None:
         """Initialize PostgreSQL connection pool with pgvector support."""
         try:
-            dsn = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+            dsn = (
+                f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+            )
 
             self.pool = await asyncpg.create_pool(
                 dsn,
                 min_size=self.min_connections,
                 max_size=self.max_connections,
                 timeout=self.connection_timeout,
-                setup=self._setup_connection
+                setup=self._setup_connection,
             )
 
             # Verify pgvector extension
@@ -128,10 +139,7 @@ class PostgreSQLVectorStore:
             logger.debug("PostgreSQL connection pool closed")
 
     async def search(
-        self,
-        query_embedding: list[float],
-        limit: int = 10,
-        threshold: float = 0.5
+        self, query_embedding: list[float], limit: int = 10, threshold: float = 0.5
     ) -> list[SearchResult]:
         """
         Semantic search using vector similarity.
@@ -174,8 +182,7 @@ class PostgreSQLVectorStore:
             async with self.pool.acquire() as conn:
                 start_time = time.time()
                 rows = await asyncio.wait_for(
-                    conn.fetch(query, query_embedding, distance_threshold, limit),
-                    timeout=5.0
+                    conn.fetch(query, query_embedding, distance_threshold, limit), timeout=5.0
                 )
                 query_time_ms = (time.time() - start_time) * 1000
 
@@ -184,7 +191,7 @@ class PostgreSQLVectorStore:
                         path=row["path"],
                         title=row["title"],
                         content=row["content"],
-                        similarity=float(row["similarity"])
+                        similarity=float(row["similarity"]),
                     )
                     for row in rows
                 ]
@@ -198,10 +205,7 @@ class PostgreSQLVectorStore:
             raise VectorStoreError(f"Search failed: {e}") from e
 
     async def get_similar_notes(
-        self,
-        note_path: str,
-        limit: int = 10,
-        threshold: float = 0.5
+        self, note_path: str, limit: int = 10, threshold: float = 0.5
     ) -> list[SearchResult]:
         """
         Find notes similar to the given note.
@@ -221,8 +225,7 @@ class PostgreSQLVectorStore:
             async with self.pool.acquire() as conn:
                 # Fetch source note's embedding
                 source_embedding = await conn.fetchval(
-                    "SELECT embedding FROM notes WHERE path = $1",
-                    note_path
+                    "SELECT embedding FROM notes WHERE path = $1", note_path
                 )
 
                 if source_embedding is None:
@@ -232,7 +235,7 @@ class PostgreSQLVectorStore:
                 results = await self.search(
                     query_embedding=list(source_embedding),
                     limit=limit + 1,  # +1 to account for self exclusion
-                    threshold=threshold
+                    threshold=threshold,
                 )
 
                 # Remove self from results
@@ -280,7 +283,7 @@ class PostgreSQLVectorStore:
                     note.modified_at,
                     note.file_size_bytes,
                     note.chunk_index,
-                    note.total_chunks
+                    note.total_chunks,
                 )
 
             logger.debug(f"Upserted note: {note.path}")
@@ -317,7 +320,16 @@ class PostgreSQLVectorStore:
             """
 
             batch_data = [
-                (n.path, n.title, n.content, n.embedding, n.modified_at, n.file_size_bytes, n.chunk_index, n.total_chunks)
+                (
+                    n.path,
+                    n.title,
+                    n.content,
+                    n.embedding,
+                    n.modified_at,
+                    n.file_size_bytes,
+                    n.chunk_index,
+                    n.total_chunks,
+                )
                 for n in notes
             ]
 

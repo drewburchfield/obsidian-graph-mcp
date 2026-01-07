@@ -26,23 +26,18 @@ __all__ = [
     "Note",
     "SearchResult",
     "VectorStoreError",
-
     # Embeddings
     "VoyageEmbedder",
     "EmbeddingError",
-
     # Graph Analysis
     "GraphBuilder",
     "HubAnalyzer",
-
     # File Watching
     "VaultWatcher",
-
     # Security & Validation
     "validate_note_path_parameter",
     "SecurityError",
     "ValidationError",
-
     # Exceptions
     "DatabaseError",
     "ObsidianGraphError",

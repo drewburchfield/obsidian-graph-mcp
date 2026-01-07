@@ -35,15 +35,16 @@ class TestEmbeddingFailures:
 
         # Call search_notes
         result = await call_tool(
-            "search_notes",
-            {"query": "test query", "limit": 10, "threshold": 0.5}
+            "search_notes", {"query": "test query", "limit": 10, "threshold": 0.5}
         )
 
         # Verify error response
         assert len(result) == 1
         assert result[0]["type"] == "text"
         assert "Failed to generate query embedding" in result[0]["text"]
-        assert "Voyage API rate limited" in result[0]["text"] or "EmbeddingError" in result[0]["text"]
+        assert (
+            "Voyage API rate limited" in result[0]["text"] or "EmbeddingError" in result[0]["text"]
+        )
 
 
 class TestDatabaseFailures:
@@ -63,10 +64,7 @@ class TestDatabaseFailures:
         server_context.embedder.embed = MagicMock(return_value=[0.1] * 1024)
 
         # Call search_notes
-        result = await call_tool(
-            "search_notes",
-            {"query": "test", "limit": 10, "threshold": 0.5}
-        )
+        result = await call_tool("search_notes", {"query": "test", "limit": 10, "threshold": 0.5})
 
         # Verify error is caught and reported
         assert len(result) == 1
@@ -87,8 +85,7 @@ class TestDatabaseFailures:
 
         # Call get_similar_notes
         result = await call_tool(
-            "get_similar_notes",
-            {"note_path": "nonexistent.md", "limit": 10, "threshold": 0.5}
+            "get_similar_notes", {"note_path": "nonexistent.md", "limit": 10, "threshold": 0.5}
         )
 
         # Verify error is caught and reported
@@ -119,7 +116,7 @@ class TestServerInitialization:
                 ("get_similar_notes", {"note_path": "test.md", "limit": 10, "threshold": 0.5}),
                 ("get_connection_graph", {"note_path": "test.md", "depth": 2, "max_per_level": 5}),
                 ("get_hub_notes", {"min_connections": 5, "threshold": 0.5, "limit": 20}),
-                ("get_orphaned_notes", {"max_connections": 2, "threshold": 0.5, "limit": 20})
+                ("get_orphaned_notes", {"max_connections": 2, "threshold": 0.5, "limit": 20}),
             ]
 
             for tool_name, args in tools:
@@ -128,8 +125,9 @@ class TestServerInitialization:
                 # All should return initialization error
                 assert len(result) == 1
                 assert result[0]["type"] == "text"
-                assert "Server not initialized" in result[0]["text"], \
-                    f"{tool_name} should handle uninitialized server"
+                assert (
+                    "Server not initialized" in result[0]["text"]
+                ), f"{tool_name} should handle uninitialized server"
 
         finally:
             # Restore context
@@ -149,6 +147,7 @@ class TestGraphBuilderErrors:
         class MockAcquire:
             async def __aenter__(self):
                 raise Exception("DB connection failed")
+
             async def __aexit__(self, *args):
                 pass
 
@@ -174,6 +173,7 @@ class TestGraphBuilderErrors:
         class MockAcquire:
             async def __aenter__(self):
                 return mock_conn
+
             async def __aexit__(self, *args):
                 pass
 
@@ -200,6 +200,7 @@ class TestGraphBuilderErrors:
         class MockAcquire:
             async def __aenter__(self):
                 return mock_conn
+
             async def __aexit__(self, *args):
                 pass
 

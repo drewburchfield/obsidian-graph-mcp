@@ -40,29 +40,49 @@ async def setup_test_data():
 
     # Create test notes
     test_notes_content = [
-        ("ml/machine-learning.md", "Machine Learning", """
+        (
+            "ml/machine-learning.md",
+            "Machine Learning",
+            """
 Machine learning is a subset of artificial intelligence that focuses on
 developing algorithms that can learn from and make predictions on data.
 Neural networks and deep learning are key techniques.
-        """),
-        ("ml/neural-networks.md", "Neural Networks", """
+        """,
+        ),
+        (
+            "ml/neural-networks.md",
+            "Neural Networks",
+            """
 Neural networks are computing systems inspired by biological neural networks.
 They consist of layers of interconnected nodes that process information.
 Deep learning uses multi-layer neural networks.
-        """),
-        ("ml/deep-learning.md", "Deep Learning", """
+        """,
+        ),
+        (
+            "ml/deep-learning.md",
+            "Deep Learning",
+            """
 Deep learning is a subset of machine learning using multi-layered neural networks.
 It excels at tasks like image recognition, natural language processing,
 and speech recognition.
-        """),
-        ("philosophy/consciousness.md", "Consciousness", """
+        """,
+        ),
+        (
+            "philosophy/consciousness.md",
+            "Consciousness",
+            """
 Consciousness is the state of being aware of one's thoughts, feelings, and surroundings.
 Philosophers have debated the nature of consciousness for centuries.
-        """),
-        ("neuroscience/brain.md", "The Brain", """
+        """,
+        ),
+        (
+            "neuroscience/brain.md",
+            "The Brain",
+            """
 The human brain is the central organ of the nervous system.
 It contains billions of neurons that form complex networks.
-        """)
+        """,
+        ),
     ]
 
     # Generate embeddings and insert
@@ -72,14 +92,16 @@ It contains billions of neurons that form complex networks.
     notes = []
     for (path, title, content), embedding in zip(test_notes_content, embeddings, strict=False):
         if embedding:
-            notes.append(Note(
-                path=path,
-                title=title,
-                content=content.strip(),
-                embedding=embedding,
-                modified_at=datetime.now(),
-                file_size_bytes=len(content)
-            ))
+            notes.append(
+                Note(
+                    path=path,
+                    title=title,
+                    content=content.strip(),
+                    embedding=embedding,
+                    modified_at=datetime.now(),
+                    file_size_bytes=len(content),
+                )
+            )
 
     await store.upsert_batch(notes)
 
@@ -99,8 +121,9 @@ async def test_search_notes_similarity_range(setup_test_data):
     results = await store.search(query_embedding, limit=10, threshold=0.0)
 
     for result in results:
-        assert 0.0 <= result.similarity <= 1.0, \
-            f"Similarity {result.similarity} out of range [0.0, 1.0]"
+        assert (
+            0.0 <= result.similarity <= 1.0
+        ), f"Similarity {result.similarity} out of range [0.0, 1.0]"
 
 
 @pytest.mark.asyncio
@@ -126,8 +149,9 @@ async def test_search_notes_threshold(setup_test_data):
     results = await store.search(query_embedding, limit=10, threshold=0.2)
 
     for result in results:
-        assert result.similarity >= 0.2, \
-            f"Result {result.title} has similarity {result.similarity} < threshold 0.2"
+        assert (
+            result.similarity >= 0.2
+        ), f"Result {result.title} has similarity {result.similarity} < threshold 0.2"
 
 
 @pytest.mark.asyncio
@@ -138,8 +162,7 @@ async def test_get_similar_notes_excludes_self(setup_test_data):
     results = await store.get_similar_notes("ml/machine-learning.md", limit=10)
 
     paths = [r.path for r in results]
-    assert "ml/machine-learning.md" not in paths, \
-        "get_similar_notes should exclude the source note"
+    assert "ml/machine-learning.md" not in paths, "get_similar_notes should exclude the source note"
 
 
 @pytest.mark.asyncio
@@ -151,8 +174,9 @@ async def test_get_similar_notes_finds_related(setup_test_data):
 
     # Should find neural networks and deep learning (semantically related)
     paths = [r.path for r in results]
-    assert any("neural" in path.lower() or "deep" in path.lower() for path in paths), \
-        "Should find semantically related ML notes"
+    assert any(
+        "neural" in path.lower() or "deep" in path.lower() for path in paths
+    ), "Should find semantically related ML notes"
 
 
 @pytest.mark.asyncio
@@ -162,13 +186,10 @@ async def test_connection_graph_no_cycles(setup_test_data):
 
     graph_builder = GraphBuilder(store)
     graph = await graph_builder.build_connection_graph(
-        "ml/machine-learning.md",
-        depth=3,
-        max_per_level=5,
-        threshold=0.3
+        "ml/machine-learning.md", depth=3, max_per_level=5, threshold=0.3
     )
 
-    paths = [n['path'] for n in graph['nodes']]
+    paths = [n["path"] for n in graph["nodes"]]
     assert len(paths) == len(set(paths)), "Duplicate nodes detected (cycle in graph)"
 
 
@@ -179,9 +200,7 @@ async def test_connection_graph_structure(setup_test_data):
 
     graph_builder = GraphBuilder(store)
     graph = await graph_builder.build_connection_graph(
-        "ml/machine-learning.md",
-        depth=2,
-        max_per_level=3
+        "ml/machine-learning.md", depth=2, max_per_level=3
     )
 
     # Verify structure
@@ -207,15 +226,11 @@ async def test_connection_graph_performance(setup_test_data):
 
     start = time.time()
     graph = await graph_builder.build_connection_graph(
-        "ml/machine-learning.md",
-        depth=3,
-        max_per_level=5,
-        threshold=0.3
+        "ml/machine-learning.md", depth=3, max_per_level=5, threshold=0.3
     )
     latency_ms = (time.time() - start) * 1000
 
-    assert latency_ms < 2000, \
-        f"Graph building took {latency_ms:.1f}ms (target: <2000ms)"
+    assert latency_ms < 2000, f"Graph building took {latency_ms:.1f}ms (target: <2000ms)"
 
 
 @pytest.mark.asyncio
@@ -224,14 +239,12 @@ async def test_connection_graph_edge_similarity(setup_test_data):
     store, _ = setup_test_data
 
     graph_builder = GraphBuilder(store)
-    graph = await graph_builder.build_connection_graph(
-        "ml/machine-learning.md",
-        depth=2
-    )
+    graph = await graph_builder.build_connection_graph("ml/machine-learning.md", depth=2)
 
     for edge in graph["edges"]:
-        assert 0.0 <= edge["similarity"] <= 1.0, \
-            f"Edge similarity {edge['similarity']} out of range"
+        assert (
+            0.0 <= edge["similarity"] <= 1.0
+        ), f"Edge similarity {edge['similarity']} out of range"
 
 
 @pytest.mark.asyncio
@@ -241,14 +254,11 @@ async def test_connection_graph_levels(setup_test_data):
 
     graph_builder = GraphBuilder(store)
     graph = await graph_builder.build_connection_graph(
-        "ml/machine-learning.md",
-        depth=3,
-        max_per_level=3
+        "ml/machine-learning.md", depth=3, max_per_level=3
     )
 
     for node in graph["nodes"]:
-        assert 0 <= node["level"] <= 3, \
-            f"Node {node['title']} at invalid level {node['level']}"
+        assert 0 <= node["level"] <= 3, f"Node {node['title']} at invalid level {node['level']}"
 
     # Root should be at level 0
     root_node = next(n for n in graph["nodes"] if n["path"] == "ml/machine-learning.md")

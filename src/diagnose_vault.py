@@ -1,4 +1,5 @@
 """Diagnose vault files to find empty string issues."""
+
 import os
 import sys
 from pathlib import Path

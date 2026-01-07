@@ -7,6 +7,7 @@ Tests that note_path parameters are properly validated to prevent:
 3. Null byte injection
 4. Access to files outside vault
 """
+
 import sys
 from pathlib import Path
 

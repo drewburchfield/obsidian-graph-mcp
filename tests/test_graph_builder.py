@@ -8,6 +8,7 @@ Tests:
 4. Level-by-level traversal
 5. Similarity edge computation
 """
+
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -25,10 +26,7 @@ async def test_build_connection_graph_structure(mock_store):
     builder = GraphBuilder(mock_store)
 
     # Mock _get_note_info to return root note
-    builder._get_note_info = AsyncMock(return_value={
-        "path": "root.md",
-        "title": "Root Note"
-    })
+    builder._get_note_info = AsyncMock(return_value={"path": "root.md", "title": "Root Note"})
 
     # Mock get_similar_notes to return empty (no connections)
     mock_store.get_similar_notes = AsyncMock(return_value=[])
@@ -82,13 +80,17 @@ async def test_bfs_prevents_cycles(mock_store):
     builder._compute_similarity = AsyncMock(return_value=0.8)
 
     # Build graph with depth that would expose cycle
-    graph = await builder.build_connection_graph("root.md", depth=5, max_per_level=10, threshold=0.5)
+    graph = await builder.build_connection_graph(
+        "root.md", depth=5, max_per_level=10, threshold=0.5
+    )
 
     # Count how many times each node appears
     node_paths = [n["path"] for n in graph["nodes"]]
 
     # Each node should appear exactly once (no duplicates from cycles)
-    assert len(node_paths) == len(set(node_paths)), "Graph contains duplicate nodes (cycle detected!)"
+    assert len(node_paths) == len(
+        set(node_paths)
+    ), "Graph contains duplicate nodes (cycle detected!)"
 
     # Specifically check that A.md doesn't appear twice
     assert node_paths.count("A.md") <= 1
@@ -124,9 +126,9 @@ async def test_max_per_level_clamping(mock_store):
 
     # Create 20 similar notes
     from src.vector_store import SearchResult
+
     all_similar_notes = [
-        SearchResult(f"note{i}.md", f"Note {i}", 0.8, "content")
-        for i in range(20)
+        SearchResult(f"note{i}.md", f"Note {i}", 0.8, "content") for i in range(20)
     ]
 
     # Mock that respects limit parameter
@@ -171,10 +173,14 @@ async def test_graph_builder_computes_edges(mock_store):
         return []
 
     mock_store.get_similar_notes = AsyncMock(side_effect=mock_similar)
-    builder._compute_similarity = AsyncMock(side_effect=lambda p1, p2: 0.9 if "child1" in p2 else 0.8)
+    builder._compute_similarity = AsyncMock(
+        side_effect=lambda p1, p2: 0.9 if "child1" in p2 else 0.8
+    )
 
     # Build graph
-    graph = await builder.build_connection_graph("root.md", depth=1, max_per_level=10, threshold=0.5)
+    graph = await builder.build_connection_graph(
+        "root.md", depth=1, max_per_level=10, threshold=0.5
+    )
 
     # Should have 2 edges (root -> child1, root -> child2)
     assert len(graph["edges"]) == 2
@@ -219,7 +225,9 @@ async def test_graph_builder_assigns_levels_correctly(mock_store):
     builder._compute_similarity = AsyncMock(return_value=0.8)
 
     # Build graph with depth=2
-    graph = await builder.build_connection_graph("root.md", depth=2, max_per_level=10, threshold=0.5)
+    graph = await builder.build_connection_graph(
+        "root.md", depth=2, max_per_level=10, threshold=0.5
+    )
 
     # Find nodes by path
     nodes_by_path = {n["path"]: n for n in graph["nodes"]}
@@ -277,6 +285,7 @@ async def test_compute_similarity_handles_missing_notes(mock_store):
     class MockAcquire:
         async def __aenter__(self):
             return mock_conn
+
         async def __aexit__(self, *args):
             pass
 

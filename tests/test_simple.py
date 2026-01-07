@@ -34,9 +34,21 @@ async def test_phase2_all_tools():
         # Setup: Create 3 test notes
         print("\n📝 Setup: Creating test notes...")
         test_notes = [
-            ("ml/machine-learning.md", "Machine Learning", "Machine learning uses algorithms to learn from data. Neural networks and deep learning are important techniques."),
-            ("ml/neural-networks.md", "Neural Networks", "Neural networks are inspired by biological neural networks. Deep learning uses multi-layer neural networks."),
-            ("philosophy/mind.md", "The Mind", "The human mind is a complex system. Philosophers study consciousness and cognition.")
+            (
+                "ml/machine-learning.md",
+                "Machine Learning",
+                "Machine learning uses algorithms to learn from data. Neural networks and deep learning are important techniques.",
+            ),
+            (
+                "ml/neural-networks.md",
+                "Neural Networks",
+                "Neural networks are inspired by biological neural networks. Deep learning uses multi-layer neural networks.",
+            ),
+            (
+                "philosophy/mind.md",
+                "The Mind",
+                "The human mind is a complex system. Philosophers study consciousness and cognition.",
+            ),
         ]
 
         texts = [content for _, _, content in test_notes]
@@ -44,14 +56,16 @@ async def test_phase2_all_tools():
 
         notes = []
         for (path, title, content), embedding in zip(test_notes, embeddings, strict=False):
-            notes.append(Note(
-                path=path,
-                title=title,
-                content=content,
-                embedding=embedding,
-                modified_at=datetime.now(),
-                file_size_bytes=len(content)
-            ))
+            notes.append(
+                Note(
+                    path=path,
+                    title=title,
+                    content=content,
+                    embedding=embedding,
+                    modified_at=datetime.now(),
+                    file_size_bytes=len(content),
+                )
+            )
 
         await store.upsert_batch(notes)
         print(f"   ✅ Created {len(notes)} test notes")
@@ -72,8 +86,7 @@ async def test_phase2_all_tools():
         assert latency_ms < 500, f"Search took {latency_ms:.1f}ms (target: <500ms)"
 
         for result in results:
-            assert 0.0 <= result.similarity <= 1.0, \
-                f"Similarity {result.similarity} out of range"
+            assert 0.0 <= result.similarity <= 1.0, f"Similarity {result.similarity} out of range"
             print(f"   - {result.title}: {result.similarity:.3f}")
 
         print("   ✅ search_notes passed")
@@ -107,14 +120,13 @@ async def test_phase2_all_tools():
 
         start = time.time()
         graph = await graph_builder.build_connection_graph(
-            "ml/machine-learning.md",
-            depth=2,
-            max_per_level=3,
-            threshold=0.0
+            "ml/machine-learning.md", depth=2, max_per_level=3, threshold=0.0
         )
         latency_ms = (time.time() - start) * 1000
 
-        print(f"   Network: {graph['stats']['total_nodes']} nodes, {graph['stats']['total_edges']} edges")
+        print(
+            f"   Network: {graph['stats']['total_nodes']} nodes, {graph['stats']['total_edges']} edges"
+        )
         print(f"   Performance: {latency_ms:.1f}ms (target: <2000ms)")
 
         # Assertions
@@ -127,16 +139,17 @@ async def test_phase2_all_tools():
         assert graph["root"]["path"] == "ml/machine-learning.md"
 
         # Check no cycles
-        paths = [n['path'] for n in graph['nodes']]
+        paths = [n["path"] for n in graph["nodes"]]
         assert len(paths) == len(set(paths)), "Duplicate nodes (cycle detected)"
 
         # Check edge similarities
-        for edge in graph['edges']:
-            assert 0.0 <= edge['similarity'] <= 1.0, \
-                f"Edge similarity {edge['similarity']} out of range"
+        for edge in graph["edges"]:
+            assert (
+                0.0 <= edge["similarity"] <= 1.0
+            ), f"Edge similarity {edge['similarity']} out of range"
 
         print(f"   - Root: {graph['root']['title']}")
-        for node in graph['nodes'][:5]:
+        for node in graph["nodes"][:5]:
             print(f"   - L{node['level']}: {node['title']}")
 
         print("   ✅ get_connection_graph passed")

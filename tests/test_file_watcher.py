@@ -8,6 +8,7 @@ Tests:
 4. Startup scan for offline changes
 5. Lock cleanup for memory leak prevention
 """
+
 import asyncio
 import sys
 import time
@@ -31,7 +32,7 @@ async def test_file_watcher_detects_modifications(tmp_vault, mock_store, mock_em
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=1
+        debounce_seconds=1,
     )
 
     # Create a test file
@@ -60,7 +61,7 @@ async def test_file_watcher_ignores_non_markdown(tmp_vault, mock_store, mock_emb
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=1
+        debounce_seconds=1,
     )
 
     # Create non-markdown files
@@ -90,7 +91,7 @@ async def test_file_watcher_debounces_rapid_edits(tmp_vault, mock_store, mock_em
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=0.3  # Short debounce for testing
+        debounce_seconds=0.3,  # Short debounce for testing
     )
 
     test_file = tmp_vault / "test.md"
@@ -128,7 +129,7 @@ async def test_file_watcher_handles_empty_files(tmp_vault, mock_store, mock_embe
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=0.1
+        debounce_seconds=0.1,
     )
 
     # Use the existing empty.md file from tmp_vault
@@ -136,6 +137,7 @@ async def test_file_watcher_handles_empty_files(tmp_vault, mock_store, mock_embe
 
     # Mock embedder to raise EmbeddingError for empty content
     from src.exceptions import EmbeddingError
+
     mock_embedder.embed = MagicMock(side_effect=EmbeddingError("Empty content", text_preview=""))
 
     # Trigger re-index
@@ -154,7 +156,7 @@ async def test_lock_cleanup_prevents_memory_leak(tmp_vault, mock_store, mock_emb
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=0.1
+        debounce_seconds=0.1,
     )
 
     # Mock re-index to do nothing
@@ -170,8 +172,9 @@ async def test_lock_cleanup_prevents_memory_leak(tmp_vault, mock_store, mock_emb
     await asyncio.sleep(0.2)
 
     # Lock dict should be small (most locks cleaned up)
-    assert len(watcher._reindex_locks) < 10, \
-        f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
+    assert (
+        len(watcher._reindex_locks) < 10
+    ), f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
 
 
 @pytest.mark.asyncio
@@ -179,15 +182,14 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
     """Test that startup scan detects files changed while offline."""
     # Create vault watcher
     vault_watcher = VaultWatcher(
-        vault_path=str(tmp_vault),
-        store=mock_store,
-        embedder=mock_embedder,
-        debounce_seconds=1
+        vault_path=str(tmp_vault), store=mock_store, embedder=mock_embedder, debounce_seconds=1
     )
 
     # Mock database to return old last_indexed_at times
     mock_conn = AsyncMock()
-    mock_conn.fetchval = AsyncMock(return_value=datetime(2020, 1, 1, tzinfo=UTC))  # Very old timestamp (timezone-aware)
+    mock_conn.fetchval = AsyncMock(
+        return_value=datetime(2020, 1, 1, tzinfo=UTC)
+    )  # Very old timestamp (timezone-aware)
 
     class MockAcquire:
         async def __aenter__(self):
@@ -212,8 +214,9 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
 
     # Should have detected stale files (note1.md, note2.md, folder/note3.md)
     # Empty.md might be skipped
-    assert vault_watcher.event_handler._reindex_file.call_count >= 3, \
-        "Expected at least 3 stale files detected"
+    assert (
+        vault_watcher.event_handler._reindex_file.call_count >= 3
+    ), "Expected at least 3 stale files detected"
 
 
 @pytest.mark.asyncio
@@ -225,7 +228,7 @@ async def test_get_lock_for_file_creates_new_locks(tmp_vault, mock_store, mock_e
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=1
+        debounce_seconds=1,
     )
 
     # Initially no locks
@@ -255,7 +258,7 @@ async def test_cleanup_lock_removes_unused_locks(tmp_vault, mock_store, mock_emb
         store=mock_store,
         embedder=mock_embedder,
         loop=loop,
-        debounce_seconds=1
+        debounce_seconds=1,
     )
 
     file_path = "/vault/test.md"

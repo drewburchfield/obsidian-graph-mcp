@@ -45,7 +45,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         store: PostgreSQLVectorStore,
         embedder: VoyageEmbedder,
         loop: asyncio.AbstractEventLoop,
-        debounce_seconds: int = 30
+        debounce_seconds: int = 30,
     ):
         """
         Initialize file watcher.
@@ -85,10 +85,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         try:
             future.result()  # Raises if coroutine failed
         except Exception as e:
-            logger.error(
-                f"File reindex task failed: {e}",
-                exc_info=True
-            )
+            logger.error(f"File reindex task failed: {e}", exc_info=True)
             # File will be retried on next modification or startup scan
 
     def on_modified(self, event):
@@ -96,7 +93,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if not event.src_path.endswith('.md'):
+        if not event.src_path.endswith(".md"):
             return
 
         file_path = event.src_path
@@ -104,10 +101,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
 
         # Schedule debounced re-index with error handling
         self.pending_changes[file_path] = time.time()
-        future = asyncio.run_coroutine_threadsafe(
-            self._debounced_reindex(file_path),
-            self.loop
-        )
+        future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(file_path), self.loop)
         future.add_done_callback(self._handle_reindex_future_error)
 
     def on_created(self, event):
@@ -115,7 +109,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if not event.src_path.endswith('.md'):
+        if not event.src_path.endswith(".md"):
             return
 
         file_path = event.src_path
@@ -123,10 +117,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
 
         # Schedule debounced re-index with error handling
         self.pending_changes[file_path] = time.time()
-        future = asyncio.run_coroutine_threadsafe(
-            self._debounced_reindex(file_path),
-            self.loop
-        )
+        future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(file_path), self.loop)
         future.add_done_callback(self._handle_reindex_future_error)
 
     async def _get_lock_for_file(self, file_path: str) -> asyncio.Lock:
@@ -204,7 +195,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         """
         try:
             # Read file
-            with open(file_path, encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Get file metadata
@@ -232,7 +223,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                 content=content,
                 embedding=embedding,
                 modified_at=modified_at,
-                file_size_bytes=file_size
+                file_size_bytes=file_size,
             )
 
             await self.store.upsert_note(note)
@@ -255,7 +246,7 @@ class VaultWatcher:
         vault_path: str,
         store: PostgreSQLVectorStore,
         embedder: VoyageEmbedder,
-        debounce_seconds: int = 30
+        debounce_seconds: int = 30,
     ):
         """
         Initialize vault watcher.
@@ -298,8 +289,7 @@ class VaultWatcher:
 
                     # Check last indexed time from database
                     last_indexed = await conn.fetchval(
-                        "SELECT MAX(last_indexed_at) FROM notes WHERE path = $1",
-                        rel_path
+                        "SELECT MAX(last_indexed_at) FROM notes WHERE path = $1", rel_path
                     )
 
                     # If file changed since last index, mark for re-indexing
@@ -317,20 +307,24 @@ class VaultWatcher:
                         logger.error(f"Failed to re-index {file_path}: {e}")
                         failed_files.append(str(file_path))
                     except Exception as e:
-                        logger.error(f"Unexpected error re-indexing {file_path}: {e}", exc_info=True)
+                        logger.error(
+                            f"Unexpected error re-indexing {file_path}: {e}", exc_info=True
+                        )
                         failed_files.append(str(file_path))
 
                 # Report summary
                 if failed_files:
                     logger.warning(
                         f"Startup scan: {len(stale_files) - len(failed_files)}/{len(stale_files)} succeeded, "
-                        f"{len(failed_files)} failed:\n" +
-                        "\n".join(f"  - {f}" for f in failed_files[:10])
+                        f"{len(failed_files)} failed:\n"
+                        + "\n".join(f"  - {f}" for f in failed_files[:10])
                     )
                     if len(failed_files) > 10:
                         logger.warning(f"  ... and {len(failed_files) - 10} more failures")
                 else:
-                    logger.success(f"Startup scan: All {len(stale_files)} stale files re-indexed successfully")
+                    logger.success(
+                        f"Startup scan: All {len(stale_files)} stale files re-indexed successfully"
+                    )
             else:
                 logger.info("Startup scan: All files up to date")
 
@@ -345,19 +339,11 @@ class VaultWatcher:
             return
 
         self.event_handler = ObsidianFileWatcher(
-            self.vault_path,
-            self.store,
-            self.embedder,
-            loop,
-            self.debounce_seconds
+            self.vault_path, self.store, self.embedder, loop, self.debounce_seconds
         )
 
         self.observer = Observer()
-        self.observer.schedule(
-            self.event_handler,
-            self.vault_path,
-            recursive=True
-        )
+        self.observer.schedule(self.event_handler, self.vault_path, recursive=True)
         self.observer.start()
 
         logger.success(f"Watching vault: {self.vault_path}")

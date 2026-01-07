@@ -34,7 +34,7 @@ class VoyageEmbedder:
         model: str = "voyage-context-3",
         cache_dir: str = "./data/embeddings_cache",
         batch_size: int = 128,
-        requests_per_minute: int = 300
+        requests_per_minute: int = 300,
     ):
         """
         Initialize Voyage embedder.
@@ -92,8 +92,8 @@ class VoyageEmbedder:
             if end < len(text):
                 # Look for sentence ending in last 200 chars
                 chunk = text[start:end]
-                last_period = chunk.rfind('. ')
-                last_newline = chunk.rfind('\n\n')
+                last_period = chunk.rfind(". ")
+                last_newline = chunk.rfind("\n\n")
                 break_point = max(last_period, last_newline)
 
                 if break_point > chunk_size - 200:  # Found good break point
@@ -102,14 +102,13 @@ class VoyageEmbedder:
             chunks.append(text[start:end].strip())
             start = end - overlap
 
-        logger.debug(f"Split text into {len(chunks)} chunks ({chunk_size} chars, {overlap} overlap)")
+        logger.debug(
+            f"Split text into {len(chunks)} chunks ({chunk_size} chars, {overlap} overlap)"
+        )
         return chunks
 
     def embed_with_chunks(
-        self,
-        text: str,
-        chunk_size: int = 2000,
-        input_type: str = "document"
+        self, text: str, chunk_size: int = 2000, input_type: str = "document"
     ) -> tuple[list[list[float]], int]:
         """
         Embed text with automatic chunking for large content.
@@ -148,7 +147,7 @@ class VoyageEmbedder:
 
         try:
             for i in range(0, len(chunks), batch_size):
-                chunk_batch = chunks[i:i + batch_size]
+                chunk_batch = chunks[i : i + batch_size]
 
                 # Rate limit
                 self._rate_limit()
@@ -157,7 +156,7 @@ class VoyageEmbedder:
                 result = self.client.contextualized_embed(
                     inputs=[chunk_batch],  # One document's chunks
                     model=self.model,
-                    input_type=input_type
+                    input_type=input_type,
                 )
 
                 # Extract embeddings
@@ -172,9 +171,7 @@ class VoyageEmbedder:
         except Exception as e:
             logger.error(f"Chunked embedding failed: {e}", exc_info=True)
             raise EmbeddingError(
-                f"Failed to embed chunked text: {e}",
-                text_preview=text[:100],
-                cause=e
+                f"Failed to embed chunked text: {e}", text_preview=text[:100], cause=e
             ) from e
 
     def _load_cache_index(self) -> dict:
@@ -201,12 +198,7 @@ class VoyageEmbedder:
             time.sleep(self.request_interval - time_since_last)
         self.last_request_time = time.time()
 
-    def embed(
-        self,
-        text: str,
-        input_type: str = "document",
-        use_cache: bool = True
-    ) -> list[float]:
+    def embed(self, text: str, input_type: str = "document", use_cache: bool = True) -> list[float]:
         """
         Generate embedding for a single text.
 
@@ -224,18 +216,12 @@ class VoyageEmbedder:
         results = self.embed_batch([text], input_type, use_cache)
 
         if not results or results[0] is None:
-            raise EmbeddingError(
-                "Failed to generate embedding for text",
-                text_preview=text[:100]
-            )
+            raise EmbeddingError("Failed to generate embedding for text", text_preview=text[:100])
 
         return results[0]
 
     def embed_batch(
-        self,
-        texts: list[str],
-        input_type: str = "document",
-        use_cache: bool = True
+        self, texts: list[str], input_type: str = "document", use_cache: bool = True
     ) -> list[list[float]]:
         """
         Generate embeddings for multiple texts with caching.
@@ -282,7 +268,7 @@ class VoyageEmbedder:
 
             new_embeddings = []
             for i in range(0, len(texts_to_embed), self.batch_size):
-                batch = texts_to_embed[i:i + self.batch_size]
+                batch = texts_to_embed[i : i + self.batch_size]
 
                 # Rate limiting
                 self._rate_limit()
@@ -312,9 +298,7 @@ class VoyageEmbedder:
                     # Note: voyageai client doesn't support timeout parameter
                     # Consider adding timeout wrapper if API calls hang
                     result = self.client.contextualized_embed(
-                        inputs=nested_inputs,
-                        model=self.model,
-                        input_type=input_type
+                        inputs=nested_inputs, model=self.model, input_type=input_type
                     )
 
                     # Extract embeddings from contextualized result
@@ -349,7 +333,7 @@ class VoyageEmbedder:
                     raise EmbeddingError(
                         f"Batch embedding failed: {e}",
                         text_preview=batch[0][:100] if batch else "",
-                        cause=e
+                        cause=e,
                     ) from e
 
             # Merge cached and new embeddings in correct order
@@ -378,5 +362,5 @@ class VoyageEmbedder:
             "total_cached": len(self.cache_index),
             "cache_size_mb": round(total_size / (1024 * 1024), 2),
             "cache_dir": str(self.cache_dir),
-            "model": self.model
+            "model": self.model,
         }

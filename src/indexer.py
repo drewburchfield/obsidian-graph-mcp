@@ -77,8 +77,10 @@ async def index_vault(vault_path: str, batch_size: int = 100):
 
         # Process in batches
         for i in range(0, len(md_files), batch_size):
-            batch_files = md_files[i:i + batch_size]
-            logger.info(f"Processing batch {i // batch_size + 1}/{(len(md_files) + batch_size - 1) // batch_size}")
+            batch_files = md_files[i : i + batch_size]
+            logger.info(
+                f"Processing batch {i // batch_size + 1}/{(len(md_files) + batch_size - 1) // batch_size}"
+            )
 
             # Read files
             notes_data = []
@@ -100,13 +102,15 @@ async def index_vault(vault_path: str, batch_size: int = 100):
                     # Get vault-relative path
                     rel_path = str(file_path.relative_to(vault_root))
 
-                    notes_data.append({
-                        "path": rel_path,
-                        "title": extract_title(file_path),
-                        "content": content,
-                        "modified_at": modified_at,
-                        "file_size_bytes": file_size
-                    })
+                    notes_data.append(
+                        {
+                            "path": rel_path,
+                            "title": extract_title(file_path),
+                            "content": content,
+                            "modified_at": modified_at,
+                            "file_size_bytes": file_size,
+                        }
+                    )
 
                 except Exception as e:
                     logger.error(f"Error reading {file_path}: {e}")
@@ -136,43 +140,49 @@ async def index_vault(vault_path: str, batch_size: int = 100):
                     embeddings_list, total_chunks = embedder.embed_with_chunks(
                         note_data["content"],
                         chunk_size=2000,  # oachatbot standard
-                        input_type="document"
+                        input_type="document",
                     )
                 except EmbeddingError as e:
                     logger.error(f"Failed to embed {note_data['path']}: {e}")
-                    batch_failed_notes.append({"path": note_data['path'], "error": str(e)})
-                    all_failed_notes.append({"path": note_data['path'], "error": str(e)})
+                    batch_failed_notes.append({"path": note_data["path"], "error": str(e)})
+                    all_failed_notes.append({"path": note_data["path"], "error": str(e)})
                     continue
 
                 # Create Note object(s)
                 if total_chunks == 1:
                     # Whole note (not chunked)
-                    notes.append(Note(
-                        path=note_data["path"],
-                        title=note_data["title"],
-                        content=note_data["content"],
-                        embedding=embeddings_list[0],
-                        modified_at=note_data["modified_at"],
-                        file_size_bytes=note_data["file_size_bytes"],
-                        chunk_index=0,
-                        total_chunks=1
-                    ))
+                    notes.append(
+                        Note(
+                            path=note_data["path"],
+                            title=note_data["title"],
+                            content=note_data["content"],
+                            embedding=embeddings_list[0],
+                            modified_at=note_data["modified_at"],
+                            file_size_bytes=note_data["file_size_bytes"],
+                            chunk_index=0,
+                            total_chunks=1,
+                        )
+                    )
                 else:
                     # Chunked note - create one Note per chunk
                     chunks = embedder.chunk_text(note_data["content"], chunk_size=2000, overlap=0)
                     logger.info(f"Chunked {note_data['path']}: {total_chunks} chunks")
 
-                    for chunk_idx, (chunk_text, embedding) in enumerate(zip(chunks, embeddings_list, strict=False)):
-                        notes.append(Note(
-                            path=note_data["path"],
-                            title=note_data["title"],
-                            content=chunk_text,
-                            embedding=embedding,
-                            modified_at=note_data["modified_at"],
-                            file_size_bytes=note_data["file_size_bytes"],
-                            chunk_index=chunk_idx,
-                            total_chunks=total_chunks
-                        ))
+                    for chunk_idx, (chunk_text, embedding) in enumerate(
+                        zip(chunks, embeddings_list, strict=False)
+                    ):
+                        notes.append(
+                            Note(
+                                path=note_data["path"],
+                                title=note_data["title"],
+                                content=chunk_text,
+                                embedding=embedding,
+                                modified_at=note_data["modified_at"],
+                                file_size_bytes=note_data["file_size_bytes"],
+                                chunk_index=chunk_idx,
+                                total_chunks=total_chunks,
+                            )
+                        )
 
             # Insert into PostgreSQL
             if notes:
@@ -187,8 +197,8 @@ async def index_vault(vault_path: str, batch_size: int = 100):
         if all_failed_notes:
             logger.warning(
                 f"Indexing completed with {len(all_failed_notes)} failures "
-                f"(out of {len(md_files)} total files):\n" +
-                "\n".join(f"  - {n['path']}: {n['error']}" for n in all_failed_notes[:10])
+                f"(out of {len(md_files)} total files):\n"
+                + "\n".join(f"  - {n['path']}: {n['error']}" for n in all_failed_notes[:10])
             )
             if len(all_failed_notes) > 10:
                 logger.warning(f"  ... and {len(all_failed_notes) - 10} more failures")

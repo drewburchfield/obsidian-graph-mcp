@@ -7,6 +7,7 @@ Tests that database passwords are:
 3. Synchronized between MCP server and PostgreSQL container
 4. Not logged or exposed in error messages
 """
+
 import os
 import re
 from pathlib import Path
@@ -25,29 +26,30 @@ def test_no_hardcoded_passwords_in_docker_compose():
         content = f.read()
 
     # Look for obsidian-graph-pgvector service
-    lines = content.split('\n')
+    lines = content.split("\n")
     in_pgvector_service = False
     hardcoded_passwords = []
 
     for i, line in enumerate(lines):
-        if 'mcp-obsidian-graph-pgvector:' in line:
+        if "mcp-obsidian-graph-pgvector:" in line:
             in_pgvector_service = True
-        elif in_pgvector_service and line.strip().startswith('services:'):
+        elif in_pgvector_service and line.strip().startswith("services:"):
             break  # End of this service
-        elif in_pgvector_service and 'POSTGRES_PASSWORD:' in line:
+        elif in_pgvector_service and "POSTGRES_PASSWORD:" in line:
             # Check if it's a hardcoded value (not an env var reference)
-            if not ('${' in line or 'POSTGRES_PASSWORD}' in line):
+            if not ("${" in line or "POSTGRES_PASSWORD}" in line):
                 # Extract the value
-                match = re.search(r'POSTGRES_PASSWORD:\s*(.+)', line)
+                match = re.search(r"POSTGRES_PASSWORD:\s*(.+)", line)
                 if match:
                     value = match.group(1).strip()
                     # If it's a literal string (not env var), flag it
-                    if value and not value.startswith('$'):
+                    if value and not value.startswith("$"):
                         hardcoded_passwords.append((i + 1, value))
 
-    assert len(hardcoded_passwords) == 0, \
-        f"Found hardcoded passwords in docker-compose.yml at lines: {hardcoded_passwords}. " \
+    assert len(hardcoded_passwords) == 0, (
+        f"Found hardcoded passwords in docker-compose.yml at lines: {hardcoded_passwords}. "
         "Use environment variables instead: POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}"
+    )
 
 
 def test_env_example_has_placeholder():
@@ -61,13 +63,15 @@ def test_env_example_has_placeholder():
         content = f.read()
 
     # Should have a placeholder
-    assert "POSTGRES_PASSWORD=your_generated_password_here" in content or \
-           "POSTGRES_PASSWORD=changeme" in content, \
-        ".env.instance.example should have a clear placeholder (your_generated_password_here or changeme)"
+    assert (
+        "POSTGRES_PASSWORD=your_generated_password_here" in content
+        or "POSTGRES_PASSWORD=changeme" in content
+    ), ".env.instance.example should have a clear placeholder (your_generated_password_here or changeme)"
 
     # Should have instructions to run the script
-    assert "generate-db-password" in content, \
-        ".env.instance.example should mention the password generation script"
+    assert (
+        "generate-db-password" in content
+    ), ".env.instance.example should mention the password generation script"
 
 
 def test_password_minimum_entropy():
@@ -82,8 +86,7 @@ def test_password_minimum_entropy():
         pytest.skip("Using placeholder/CI password - run generate-db-password.sh for production")
 
     # Minimum 32 characters (we generate 48)
-    assert len(password) >= 32, \
-        f"Password too short: {len(password)} chars (min 32)"
+    assert len(password) >= 32, f"Password too short: {len(password)} chars (min 32)"
 
     # Check character diversity (alphanumeric mix)
     has_lower = any(c.islower() for c in password)
@@ -92,8 +95,9 @@ def test_password_minimum_entropy():
 
     # Should have at least 2 of the 3 types for good entropy
     char_type_count = sum([has_lower, has_upper, has_digit])
-    assert char_type_count >= 2, \
-        f"Password lacks character diversity (has_lower={has_lower}, has_upper={has_upper}, has_digit={has_digit})"
+    assert (
+        char_type_count >= 2
+    ), f"Password lacks character diversity (has_lower={has_lower}, has_upper={has_upper}, has_digit={has_digit})"
 
 
 def test_password_not_in_common_weak_list():
@@ -105,15 +109,23 @@ def test_password_not_in_common_weak_list():
 
     # List of passwords that should never be used
     weak_passwords = [
-        "password", "123456", "admin", "root", "changeme",
-        "password123", "12345678", "qwerty", "abc123",
-        "postgres", "obsidian", "default"
+        "password",
+        "123456",
+        "admin",
+        "root",
+        "changeme",
+        "password123",
+        "12345678",
+        "qwerty",
+        "abc123",
+        "postgres",
+        "obsidian",
+        "default",
     ]
 
     password_lower = password.lower()
     for weak in weak_passwords:
-        assert weak not in password_lower, \
-            f"Password contains weak pattern: {weak}"
+        assert weak not in password_lower, f"Password contains weak pattern: {weak}"
 
 
 def test_gitignore_includes_sensitive_files():
@@ -127,25 +139,27 @@ def test_gitignore_includes_sensitive_files():
         content = f.read()
 
     # Check for docker-compose.override.yml
-    assert "docker-compose.override.yml" in content, \
-        ".gitignore should include docker-compose.override.yml"
+    assert (
+        "docker-compose.override.yml" in content
+    ), ".gitignore should include docker-compose.override.yml"
 
     # Check for .env.instance files
-    assert ".env.instance" in content or "*/.env.instance" in content, \
-        ".gitignore should include .env.instance files"
+    assert (
+        ".env.instance" in content or "*/.env.instance" in content
+    ), ".gitignore should include .env.instance files"
 
 
 def test_password_generation_script_exists():
     """Verify password generation script exists and is executable."""
     script_path = Path(__file__).parent.parent / "scripts" / "generate-db-password.sh"
 
-    assert script_path.exists(), \
-        f"Password generation script not found at {script_path}"
+    assert script_path.exists(), f"Password generation script not found at {script_path}"
 
     # Check if executable (on Unix-like systems)
-    if hasattr(os, 'access'):
-        assert os.access(script_path, os.X_OK), \
-            f"Password generation script is not executable: {script_path}"
+    if hasattr(os, "access"):
+        assert os.access(
+            script_path, os.X_OK
+        ), f"Password generation script is not executable: {script_path}"
 
 
 def test_password_generation_script_syntax():
@@ -159,22 +173,20 @@ def test_password_generation_script_syntax():
         content = f.read()
 
     # Check for required components
-    assert "generate_password()" in content, \
-        "Script should have generate_password() function"
+    assert "generate_password()" in content, "Script should have generate_password() function"
 
-    assert "/dev/urandom" in content, \
-        "Script should use /dev/urandom for cryptographic randomness"
+    assert "/dev/urandom" in content, "Script should use /dev/urandom for cryptographic randomness"
 
-    assert "tr -dc" in content, \
-        "Script should use tr for character filtering"
+    assert "tr -dc" in content, "Script should use tr for character filtering"
 
-    assert "docker-compose.override.yml" in content, \
-        "Script should create docker-compose.override.yml"
+    assert (
+        "docker-compose.override.yml" in content
+    ), "Script should create docker-compose.override.yml"
 
 
 @pytest.mark.skipif(
     not Path(__file__).parent.parent.parent.parent / "docker-compose.yml",
-    reason="docker-compose.yml not accessible"
+    reason="docker-compose.yml not accessible",
 )
 def test_docker_compose_override_pattern():
     """Verify docker-compose.override.yml pattern is correct if it exists."""
@@ -187,10 +199,11 @@ def test_docker_compose_override_pattern():
         content = f.read()
 
     # Should reference environment variable, not hardcode password
-    assert "${POSTGRES_PASSWORD}" in content or \
-           "$POSTGRES_PASSWORD" in content, \
-        "docker-compose.override.yml should reference POSTGRES_PASSWORD environment variable"
+    assert (
+        "${POSTGRES_PASSWORD}" in content or "$POSTGRES_PASSWORD" in content
+    ), "docker-compose.override.yml should reference POSTGRES_PASSWORD environment variable"
 
     # Should target the correct service
-    assert "mcp-obsidian-graph-pgvector" in content, \
-        "docker-compose.override.yml should override mcp-obsidian-graph-pgvector service"
+    assert (
+        "mcp-obsidian-graph-pgvector" in content
+    ), "docker-compose.override.yml should override mcp-obsidian-graph-pgvector service"

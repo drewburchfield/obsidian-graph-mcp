@@ -8,6 +8,7 @@ Tests:
 4. Empty file handling
 5. Large file chunking
 """
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -77,8 +78,10 @@ async def test_index_vault_processes_batches(tmp_vault, mock_store, mock_embedde
     from src.indexer import index_vault
 
     # Mock the store and embedder
-    with patch("src.indexer.VoyageEmbedder", return_value=mock_embedder), \
-         patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store):
+    with (
+        patch("src.indexer.VoyageEmbedder", return_value=mock_embedder),
+        patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store),
+    ):
 
         # Run indexing with small batch size
         await index_vault(str(tmp_vault), batch_size=2)
@@ -99,8 +102,10 @@ async def test_index_vault_skips_empty_files(tmp_path, mock_store, mock_embedder
     (vault / "valid.md").write_text("# Valid Note")
     (vault / "empty.md").write_text("")
 
-    with patch("src.indexer.VoyageEmbedder", return_value=mock_embedder), \
-         patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store):
+    with (
+        patch("src.indexer.VoyageEmbedder", return_value=mock_embedder),
+        patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store),
+    ):
 
         await index_vault(str(vault), batch_size=10)
 
@@ -128,18 +133,17 @@ async def test_index_vault_handles_large_notes_with_chunking(tmp_path, mock_stor
     (vault / "large.md").write_text(large_content)
 
     # Mock embedder to return multiple chunks
-    mock_embedder.embed_with_chunks = MagicMock(return_value=(
-        [[0.1] * 1024, [0.2] * 1024, [0.3] * 1024],  # 3 chunks
-        3  # total_chunks
-    ))
-    mock_embedder.chunk_text = MagicMock(return_value=[
-        large_content[:2000],
-        large_content[2000:4000],
-        large_content[4000:6000]
-    ])
+    mock_embedder.embed_with_chunks = MagicMock(
+        return_value=([[0.1] * 1024, [0.2] * 1024, [0.3] * 1024], 3)  # 3 chunks  # total_chunks
+    )
+    mock_embedder.chunk_text = MagicMock(
+        return_value=[large_content[:2000], large_content[2000:4000], large_content[4000:6000]]
+    )
 
-    with patch("src.indexer.VoyageEmbedder", return_value=mock_embedder), \
-         patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store):
+    with (
+        patch("src.indexer.VoyageEmbedder", return_value=mock_embedder),
+        patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store),
+    ):
 
         await index_vault(str(vault), batch_size=10)
 

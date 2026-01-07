@@ -7,6 +7,7 @@ Tests that all parameters are properly validated for:
 3. Valid ranges
 4. Sensible defaults
 """
+
 import sys
 from pathlib import Path
 
@@ -80,11 +81,9 @@ class TestSearchNotesValidation:
 
     def test_accepts_valid_input(self):
         """Valid input passes validation."""
-        validated = validate_search_notes_args({
-            "query": "machine learning",
-            "limit": 20,
-            "threshold": 0.7
-        })
+        validated = validate_search_notes_args(
+            {"query": "machine learning", "limit": 20, "threshold": 0.7}
+        )
 
         assert validated["query"] == "machine learning"
         assert validated["limit"] == 20
@@ -93,10 +92,9 @@ class TestSearchNotesValidation:
     def test_handles_string_numbers_for_limit(self):
         """String numbers should be converted to int."""
         # This tests graceful handling - returns default on invalid type
-        validated = validate_search_notes_args({
-            "query": "test",
-            "limit": "15"  # String instead of int
-        })
+        validated = validate_search_notes_args(
+            {"query": "test", "limit": "15"}  # String instead of int
+        )
         # Should convert successfully
         assert validated["limit"] == 15
 
@@ -139,36 +137,21 @@ class TestConnectionGraphValidation:
     def test_rejects_depth_out_of_range(self):
         """Depth must be in [1, 5] range."""
         with pytest.raises(ValidationError, match="depth.*1.*5"):
-            validate_connection_graph_args({
-                "note_path": "test.md",
-                "depth": 0
-            })
+            validate_connection_graph_args({"note_path": "test.md", "depth": 0})
 
         with pytest.raises(ValidationError, match="depth.*1.*5"):
-            validate_connection_graph_args({
-                "note_path": "test.md",
-                "depth": 10
-            })
+            validate_connection_graph_args({"note_path": "test.md", "depth": 10})
 
         with pytest.raises(ValidationError, match="depth.*1.*5"):
-            validate_connection_graph_args({
-                "note_path": "test.md",
-                "depth": -1
-            })
+            validate_connection_graph_args({"note_path": "test.md", "depth": -1})
 
     def test_rejects_max_per_level_out_of_range(self):
         """max_per_level must be in [1, 10] range."""
         with pytest.raises(ValidationError, match="max_per_level.*1.*10"):
-            validate_connection_graph_args({
-                "note_path": "test.md",
-                "max_per_level": 0
-            })
+            validate_connection_graph_args({"note_path": "test.md", "max_per_level": 0})
 
         with pytest.raises(ValidationError, match="max_per_level.*1.*10"):
-            validate_connection_graph_args({
-                "note_path": "test.md",
-                "max_per_level": 20
-            })
+            validate_connection_graph_args({"note_path": "test.md", "max_per_level": 20})
 
     def test_applies_defaults(self):
         """Missing optional parameters get defaults."""
@@ -181,12 +164,9 @@ class TestConnectionGraphValidation:
 
     def test_accepts_valid_input(self):
         """Valid input passes validation."""
-        validated = validate_connection_graph_args({
-            "note_path": "notes/important.md",
-            "depth": 2,
-            "max_per_level": 8,
-            "threshold": 0.6
-        })
+        validated = validate_connection_graph_args(
+            {"note_path": "notes/important.md", "depth": 2, "max_per_level": 8, "threshold": 0.6}
+        )
 
         assert validated["note_path"] == "notes/important.md"
         assert validated["depth"] == 2
@@ -215,11 +195,7 @@ class TestHubNotesValidation:
 
     def test_accepts_valid_input(self):
         """Valid input passes validation."""
-        validated = validate_hub_notes_args({
-            "min_connections": 15,
-            "threshold": 0.7,
-            "limit": 30
-        })
+        validated = validate_hub_notes_args({"min_connections": 15, "threshold": 0.7, "limit": 30})
 
         assert validated["min_connections"] == 15
         assert validated["threshold"] == 0.7
@@ -252,11 +228,9 @@ class TestOrphanedNotesValidation:
 
     def test_accepts_valid_input(self):
         """Valid input passes validation."""
-        validated = validate_orphaned_notes_args({
-            "max_connections": 3,
-            "threshold": 0.6,
-            "limit": 15
-        })
+        validated = validate_orphaned_notes_args(
+            {"max_connections": 3, "threshold": 0.6, "limit": 15}
+        )
 
         assert validated["max_connections"] == 3
         assert validated["threshold"] == 0.6

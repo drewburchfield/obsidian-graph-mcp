@@ -29,11 +29,7 @@ class GraphBuilder:
         self.store = store
 
     async def build_connection_graph(
-        self,
-        note_path: str,
-        depth: int = 3,
-        max_per_level: int = 5,
-        threshold: float = 0.5
+        self, note_path: str, depth: int = 3, max_per_level: int = 5, threshold: float = 0.5
     ) -> dict:
         """
         Build multi-hop connection graph using BFS.
@@ -93,7 +89,7 @@ class GraphBuilder:
                 "path": note_info["path"],
                 "title": note_info["title"],
                 "level": level,
-                "parent_path": parent_path
+                "parent_path": parent_path,
             }
 
             # Add edge if not root
@@ -104,41 +100,31 @@ class GraphBuilder:
                     logger.warning(f"Could not compute similarity, using 0.0: {e}")
                     similarity = 0.0
 
-                edges.append({
-                    "source": parent_path,
-                    "target": current_path,
-                    "similarity": round(similarity, 4)
-                })
+                edges.append(
+                    {
+                        "source": parent_path,
+                        "target": current_path,
+                        "similarity": round(similarity, 4),
+                    }
+                )
 
             # Expand neighbors for next level
             if level < depth:
                 neighbors = await self.store.get_similar_notes(
-                    current_path,
-                    limit=max_per_level,
-                    threshold=threshold
+                    current_path, limit=max_per_level, threshold=threshold
                 )
 
                 for neighbor in neighbors:
                     if neighbor.path not in visited:
                         queue.append((neighbor.path, level + 1, current_path))
 
-        logger.info(
-            f"Graph built: {len(nodes)} nodes, {len(edges)} edges, "
-            f"{depth} levels"
-        )
+        logger.info(f"Graph built: {len(nodes)} nodes, {len(edges)} edges, " f"{depth} levels")
 
         return {
-            "root": {
-                "path": root_note["path"],
-                "title": root_note["title"]
-            },
+            "root": {"path": root_note["path"], "title": root_note["title"]},
             "nodes": list(nodes.values()),
             "edges": edges,
-            "stats": {
-                "total_nodes": len(nodes),
-                "total_edges": len(edges),
-                "levels": depth
-            }
+            "stats": {"total_nodes": len(nodes), "total_edges": len(edges), "levels": depth},
         }
 
     async def _get_note_info(self, note_path: str) -> dict | None:
@@ -160,26 +146,18 @@ class GraphBuilder:
         try:
             async with self.store.pool.acquire() as conn:
                 result = await conn.fetchrow(
-                    "SELECT path, title FROM notes WHERE path = $1",
-                    note_path
+                    "SELECT path, title FROM notes WHERE path = $1", note_path
                 )
 
                 if result:
-                    return {
-                        "path": result["path"],
-                        "title": result["title"]
-                    }
+                    return {"path": result["path"], "title": result["title"]}
                 return None  # Not found is OK (returns None)
 
         except Exception as e:
             logger.error(f"Error fetching note info for {note_path}: {e}", exc_info=True)
             raise DatabaseError(f"Failed to fetch note info: {e}") from e
 
-    async def _compute_similarity(
-        self,
-        path1: str,
-        path2: str
-    ) -> float:
+    async def _compute_similarity(self, path1: str, path2: str) -> float:
         """
         Compute similarity between two notes.
 
@@ -208,7 +186,7 @@ class GraphBuilder:
                         (SELECT embedding FROM notes WHERE path = $2 ORDER BY chunk_index LIMIT 1) n2
                     """,
                     path1,
-                    path2
+                    path2,
                 )
 
                 if result is None:
