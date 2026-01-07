@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker-based deployment with security hardening
 - Comprehensive documentation (README, CONTRIBUTING)
 - Unit and integration tests
-- Support for both integrated (master_mcp) and standalone deployment
+- Docker Compose deployment with PostgreSQL+pgvector
 
 ### Performance
 - Search latency: 0.9ms (555x better than <500ms target)
