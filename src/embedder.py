@@ -315,9 +315,7 @@ class VoyageEmbedder:
             )
             return result
         except TimeoutError as e:
-            raise EmbeddingError(
-                f"API call timed out after {self.api_timeout}s", cause=e
-            ) from e
+            raise EmbeddingError(f"API call timed out after {self.api_timeout}s", cause=e) from e
 
     def embed(self, text: str, input_type: str = "document", use_cache: bool = True) -> list[float]:
         """

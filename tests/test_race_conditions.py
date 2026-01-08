@@ -317,4 +317,6 @@ async def test_file_watcher_stress_many_files(tmp_path):
     # Due to timing variations, some files may not complete their debounce cycles.
     # We verify that we got a reasonable number (at least 80% of files).
     assert reindex_count >= 40, f"Expected at least 40 re-indexes, got {reindex_count}"
-    assert reindex_count <= 50, f"Expected at most 50 re-indexes (one per file), got {reindex_count}"
+    assert (
+        reindex_count <= 50
+    ), f"Expected at most 50 re-indexes (one per file), got {reindex_count}"

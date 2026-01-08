@@ -151,7 +151,9 @@ def test_gitignore_includes_sensitive_files():
     ), ".gitignore should include .env.instance or .env.local files"
 
 
-@pytest.mark.skip(reason="Standalone repo uses .env file for password - no generation script needed")
+@pytest.mark.skip(
+    reason="Standalone repo uses .env file for password - no generation script needed"
+)
 def test_password_generation_script_exists():
     """Verify password generation script exists and is executable."""
     # This test is skipped for standalone repo - users configure .env directly
@@ -166,7 +168,9 @@ def test_password_generation_script_exists():
         ), f"Password generation script is not executable: {script_path}"
 
 
-@pytest.mark.skip(reason="Standalone repo uses .env file for password - no generation script needed")
+@pytest.mark.skip(
+    reason="Standalone repo uses .env file for password - no generation script needed"
+)
 def test_password_generation_script_syntax():
     """Basic syntax check for password generation script."""
     # This test is skipped for standalone repo
