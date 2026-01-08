@@ -27,7 +27,6 @@ from src.embedder import VoyageEmbedder
 from src.graph_builder import GraphBuilder
 from src.vector_store import Note, PostgreSQLVectorStore
 
-
 # Skip if no VOYAGE_API_KEY (required for embeddings)
 # Also skip if RUN_INTEGRATION_TESTS env var is not set (for pytest runs)
 pytestmark = [

@@ -28,7 +28,6 @@ from loguru import logger
 
 from .exceptions import EmbeddingError
 
-
 # Patterns for redacting sensitive information from logs
 _SENSITIVE_PATTERNS = [
     (re.compile(r"(pa-[A-Za-z0-9_-]{20,})"), "[VOYAGE_API_KEY]"),  # Voyage API key
@@ -315,7 +314,7 @@ class VoyageEmbedder:
                 timeout=self.api_timeout,
             )
             return result
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise EmbeddingError(
                 f"API call timed out after {self.api_timeout}s", cause=e
             ) from e

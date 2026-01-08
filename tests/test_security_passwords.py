@@ -17,7 +17,6 @@ from pathlib import Path
 
 import pytest
 
-
 # Project root is parents[1] (tests -> obsidian-graph-mcp)
 PROJECT_ROOT = Path(__file__).parents[1]
 
