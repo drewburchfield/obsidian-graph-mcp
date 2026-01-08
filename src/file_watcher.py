@@ -191,12 +191,18 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         """
         Re-index a single file.
 
-        Reads content, generates embedding, upserts to PostgreSQL.
+        Reads content, generates embedding(s), upserts to PostgreSQL.
+        Handles large notes with automatic chunking.
         """
         try:
             # Read file
             with open(file_path, encoding="utf-8") as f:
                 content = f.read()
+
+            # Skip empty files
+            if not content or not content.strip():
+                logger.warning(f"Skipping empty file: {file_path}")
+                return
 
             # Get file metadata
             stat = os.stat(file_path)
@@ -209,25 +215,51 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             # Extract title from filename
             title = Path(file_path).stem
 
-            # Generate embedding
+            # Generate embedding(s) with automatic chunking for large notes
             try:
-                embedding = self.embedder.embed(content, input_type="document")
+                embeddings_list, total_chunks = self.embedder.embed_with_chunks(
+                    content, chunk_size=2000, input_type="document"
+                )
             except EmbeddingError as e:
                 logger.warning(f"Failed to generate embedding for {rel_path}: {e}")
                 return
 
-            # Create note and upsert
-            note = Note(
-                path=rel_path,
-                title=title,
-                content=content,
-                embedding=embedding,
-                modified_at=modified_at,
-                file_size_bytes=file_size,
-            )
+            # Create note(s) and upsert
+            if total_chunks == 1:
+                # Single note (not chunked)
+                note = Note(
+                    path=rel_path,
+                    title=title,
+                    content=content,
+                    embedding=embeddings_list[0],
+                    modified_at=modified_at,
+                    file_size_bytes=file_size,
+                    chunk_index=0,
+                    total_chunks=1,
+                )
+                await self.store.upsert_note(note)
+                logger.info(f"Re-indexed: {rel_path}")
+            else:
+                # Chunked note - create one Note per chunk
+                chunks = self.embedder.chunk_text(content, chunk_size=2000, overlap=0)
+                logger.info(f"Re-indexing chunked note {rel_path}: {total_chunks} chunks")
 
-            await self.store.upsert_note(note)
-            logger.info(f"Re-indexed: {rel_path}")
+                for chunk_idx, (chunk_text, embedding) in enumerate(
+                    zip(chunks, embeddings_list, strict=False)
+                ):
+                    note = Note(
+                        path=rel_path,
+                        title=title,
+                        content=chunk_text,
+                        embedding=embedding,
+                        modified_at=modified_at,
+                        file_size_bytes=file_size,
+                        chunk_index=chunk_idx,
+                        total_chunks=total_chunks,
+                    )
+                    await self.store.upsert_note(note)
+
+                logger.info(f"Re-indexed {total_chunks} chunks: {rel_path}")
 
         except Exception as e:
             logger.error(f"Failed to re-index {file_path}: {e}")

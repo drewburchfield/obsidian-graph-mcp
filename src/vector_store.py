@@ -13,12 +13,16 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from urllib.parse import quote_plus
 
 import asyncpg
 from loguru import logger
 from pgvector.asyncpg import register_vector
 
 from .exceptions import DatabaseError
+
+# Expected embedding dimensions for voyage-context-3
+EMBEDDING_DIMENSIONS = 1024
 
 
 @dataclass
@@ -92,8 +96,10 @@ class PostgreSQLVectorStore:
     async def initialize(self) -> None:
         """Initialize PostgreSQL connection pool with pgvector support."""
         try:
+            # URL-encode credentials to handle special characters in passwords
             dsn = (
-                f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+                f"postgresql://{quote_plus(self.user)}:{quote_plus(self.password)}"
+                f"@{self.host}:{self.port}/{quote_plus(self.database)}"
             )
 
             self.pool = await asyncpg.create_pool(
@@ -155,9 +161,9 @@ class PostgreSQLVectorStore:
         if not self.pool:
             raise VectorStoreError("PostgreSQL store not initialized")
 
-        if len(query_embedding) != 1024:
+        if len(query_embedding) != EMBEDDING_DIMENSIONS:
             raise VectorStoreError(
-                f"Query embedding must be 1024 dimensions, got {len(query_embedding)}"
+                f"Query embedding must be {EMBEDDING_DIMENSIONS} dimensions, got {len(query_embedding)}"
             )
 
         try:
@@ -258,6 +264,13 @@ class PostgreSQLVectorStore:
         if not self.pool:
             raise VectorStoreError("PostgreSQL store not initialized")
 
+        # Validate embedding dimensions
+        if len(note.embedding) != EMBEDDING_DIMENSIONS:
+            raise VectorStoreError(
+                f"Note embedding must be {EMBEDDING_DIMENSIONS} dimensions, "
+                f"got {len(note.embedding)} for note: {note.path}"
+            )
+
         try:
             query = """
                 INSERT INTO notes (path, title, content, embedding, modified_at, file_size_bytes, chunk_index, total_chunks, last_indexed_at)
@@ -302,8 +315,19 @@ class PostgreSQLVectorStore:
         if not self.pool:
             raise VectorStoreError("PostgreSQL store not initialized")
 
+        if not notes:
+            return 0  # Early return for empty batches
+
         if len(notes) > 1000:
             raise VectorStoreError(f"Batch size {len(notes)} exceeds maximum of 1000")
+
+        # Validate all embedding dimensions
+        for note in notes:
+            if len(note.embedding) != EMBEDDING_DIMENSIONS:
+                raise VectorStoreError(
+                    f"Note embedding must be {EMBEDDING_DIMENSIONS} dimensions, "
+                    f"got {len(note.embedding)} for note: {note.path}"
+                )
 
         try:
             query = """
@@ -353,6 +377,40 @@ class PostgreSQLVectorStore:
                 return await conn.fetchval("SELECT COUNT(*) FROM notes")
         except Exception as e:
             raise VectorStoreError(f"Count query failed: {e}") from e
+
+    def get_pool_stats(self) -> dict:
+        """
+        Get connection pool statistics for monitoring.
+
+        Returns:
+            Dictionary with pool statistics:
+            - size: Current pool size
+            - free_size: Available connections
+            - used_size: Connections in use
+            - max_size: Maximum pool size
+            - min_size: Minimum pool size
+        """
+        if not self.pool:
+            return {
+                "size": 0,
+                "free_size": 0,
+                "used_size": 0,
+                "max_size": self.max_connections,
+                "min_size": self.min_connections,
+                "initialized": False,
+            }
+
+        size = self.pool.get_size()
+        free_size = self.pool.get_idle_size()
+
+        return {
+            "size": size,
+            "free_size": free_size,
+            "used_size": size - free_size,
+            "max_size": self.pool.get_max_size(),
+            "min_size": self.pool.get_min_size(),
+            "initialized": True,
+        }
 
     async def __aenter__(self):
         """Async context manager entry."""

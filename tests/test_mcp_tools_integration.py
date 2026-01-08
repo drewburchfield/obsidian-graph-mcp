@@ -1,9 +1,19 @@
 """
-Simplified unit tests for Phase 2 validation.
+Integration tests for MCP tools.
 
-Tests the 3 required tools with quality baseline verification.
+Tests all 3 core MCP tools with quality baseline verification:
+1. search_notes - Semantic search across vault
+2. get_similar_notes - Find related notes
+3. get_connection_graph - Build knowledge graph
+
+NOTE: This is an integration test requiring:
+- PostgreSQL with pgvector running
+- Valid VOYAGE_API_KEY for embeddings
+
+Marked as slow to allow skipping in quick test runs.
 """
 
+import os
 import sys
 import time
 from datetime import datetime
@@ -18,14 +28,32 @@ from src.graph_builder import GraphBuilder
 from src.vector_store import Note, PostgreSQLVectorStore
 
 
+# Skip if no VOYAGE_API_KEY (required for embeddings)
+# Also skip if RUN_INTEGRATION_TESTS env var is not set (for pytest runs)
+pytestmark = [
+    pytest.mark.skipif(
+        not os.getenv("VOYAGE_API_KEY"),
+        reason="VOYAGE_API_KEY not set - skipping integration tests",
+    ),
+    pytest.mark.skipif(
+        not os.getenv("RUN_INTEGRATION_TESTS"),
+        reason="RUN_INTEGRATION_TESTS not set - skipping (set to 'true' to run)",
+    ),
+    pytest.mark.slow,
+]
+
+
 @pytest.mark.asyncio
-async def test_phase2_all_tools():
-    """Comprehensive test of all 3 required tools."""
-    print("\n🧪 Testing Phase 2 - Required Tools")
+async def test_mcp_tools_integration(tmp_path):
+    """Comprehensive integration test of all 3 MCP tools."""
+    print("\n🧪 Testing MCP Tools Integration")
     print("=" * 60)
 
+    # Use temp directory for cache to avoid permission issues
+    cache_dir = tmp_path / "embeddings_cache"
+
     # Initialize
-    embedder = VoyageEmbedder()
+    embedder = VoyageEmbedder(cache_dir=str(cache_dir))
     store = PostgreSQLVectorStore()
     await store.initialize()
     graph_builder = GraphBuilder(store)
@@ -155,7 +183,7 @@ async def test_phase2_all_tools():
         print("   ✅ get_connection_graph passed")
 
         print("\n" + "=" * 60)
-        print("✅ All Phase 2 tools passed quality baselines!")
+        print("✅ All MCP tools passed quality baselines!")
         print("=" * 60)
 
     finally:

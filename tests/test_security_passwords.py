@@ -6,6 +6,9 @@ Tests that database passwords are:
 2. Generated randomly with sufficient entropy
 3. Synchronized between MCP server and PostgreSQL container
 4. Not logged or exposed in error messages
+
+NOTE: Path references use parents[1] for standalone repo structure:
+  tests/test_security_passwords.py -> obsidian-graph-mcp/
 """
 
 import os
@@ -15,9 +18,13 @@ from pathlib import Path
 import pytest
 
 
+# Project root is parents[1] (tests -> obsidian-graph-mcp)
+PROJECT_ROOT = Path(__file__).parents[1]
+
+
 def test_no_hardcoded_passwords_in_docker_compose():
     """Ensure docker-compose.yml doesn't contain hardcoded passwords."""
-    compose_file = Path(__file__).parents[3] / "docker-compose.yml"
+    compose_file = PROJECT_ROOT / "docker-compose.yml"
 
     if not compose_file.exists():
         pytest.skip("docker-compose.yml not found")
@@ -25,21 +32,16 @@ def test_no_hardcoded_passwords_in_docker_compose():
     with open(compose_file) as f:
         content = f.read()
 
-    # Look for obsidian-graph-pgvector service
+    # Look for postgres service password definitions
     lines = content.split("\n")
-    in_pgvector_service = False
     hardcoded_passwords = []
 
     for i, line in enumerate(lines):
-        if "mcp-obsidian-graph-pgvector:" in line:
-            in_pgvector_service = True
-        elif in_pgvector_service and line.strip().startswith("services:"):
-            break  # End of this service
-        elif in_pgvector_service and "POSTGRES_PASSWORD:" in line:
+        if "POSTGRES_PASSWORD:" in line or "POSTGRES_PASSWORD=" in line:
             # Check if it's a hardcoded value (not an env var reference)
-            if not ("${" in line or "POSTGRES_PASSWORD}" in line):
+            if "${" not in line:
                 # Extract the value
-                match = re.search(r"POSTGRES_PASSWORD:\s*(.+)", line)
+                match = re.search(r"POSTGRES_PASSWORD[=:]\s*(.+)", line)
                 if match:
                     value = match.group(1).strip()
                     # If it's a literal string (not env var), flag it
@@ -53,25 +55,28 @@ def test_no_hardcoded_passwords_in_docker_compose():
 
 
 def test_env_example_has_placeholder():
-    """Ensure .env.instance.example has placeholder, not real password."""
-    env_file = Path(__file__).parents[3] / "configs" / "obsidian-graph" / ".env.instance.example"
+    """Ensure .env.example has placeholder, not real password."""
+    env_file = PROJECT_ROOT / ".env.example"
 
     if not env_file.exists():
-        pytest.skip(".env.instance.example not found")
+        pytest.skip(".env.example not found")
 
     with open(env_file) as f:
         content = f.read()
 
-    # Should have a placeholder
-    assert (
-        "POSTGRES_PASSWORD=your_generated_password_here" in content
-        or "POSTGRES_PASSWORD=changeme" in content
-    ), ".env.instance.example should have a clear placeholder (your_generated_password_here or changeme)"
+    # Should have a placeholder for password (not a real password)
+    assert "POSTGRES_PASSWORD=" in content, ".env.example should define POSTGRES_PASSWORD"
 
-    # Should have instructions to run the script
-    assert (
-        "generate-db-password" in content
-    ), ".env.instance.example should mention the password generation script"
+    # Extract the password value
+    for line in content.split("\n"):
+        if line.startswith("POSTGRES_PASSWORD="):
+            value = line.split("=", 1)[1].strip()
+            # Should be a placeholder like "changeme" or empty, not a real password
+            assert len(value) < 32 or value in [
+                "changeme",
+                "your_password_here",
+                "",
+            ], ".env.example should have a placeholder password, not a real one"
 
 
 def test_password_minimum_entropy():
@@ -130,7 +135,7 @@ def test_password_not_in_common_weak_list():
 
 def test_gitignore_includes_sensitive_files():
     """Verify .gitignore prevents committing sensitive files."""
-    gitignore_file = Path(__file__).parents[3] / ".gitignore"
+    gitignore_file = PROJECT_ROOT / ".gitignore"
 
     if not gitignore_file.exists():
         pytest.skip(".gitignore not found")
@@ -138,20 +143,20 @@ def test_gitignore_includes_sensitive_files():
     with open(gitignore_file) as f:
         content = f.read()
 
-    # Check for docker-compose.override.yml
+    # Check for .env files (where secrets are stored)
+    assert ".env" in content, ".gitignore should include .env files"
+
+    # Check for .env.instance files (alternative naming convention)
     assert (
-        "docker-compose.override.yml" in content
-    ), ".gitignore should include docker-compose.override.yml"
-
-    # Check for .env.instance files
-    assert (
-        ".env.instance" in content or "*/.env.instance" in content
-    ), ".gitignore should include .env.instance files"
+        ".env.instance" in content or ".env.local" in content
+    ), ".gitignore should include .env.instance or .env.local files"
 
 
+@pytest.mark.skip(reason="Standalone repo uses .env file for password - no generation script needed")
 def test_password_generation_script_exists():
     """Verify password generation script exists and is executable."""
-    script_path = Path(__file__).parent.parent / "scripts" / "generate-db-password.sh"
+    # This test is skipped for standalone repo - users configure .env directly
+    script_path = PROJECT_ROOT / "scripts" / "generate-db-password.sh"
 
     assert script_path.exists(), f"Password generation script not found at {script_path}"
 
@@ -162,9 +167,11 @@ def test_password_generation_script_exists():
         ), f"Password generation script is not executable: {script_path}"
 
 
+@pytest.mark.skip(reason="Standalone repo uses .env file for password - no generation script needed")
 def test_password_generation_script_syntax():
     """Basic syntax check for password generation script."""
-    script_path = Path(__file__).parent.parent / "scripts" / "generate-db-password.sh"
+    # This test is skipped for standalone repo
+    script_path = PROJECT_ROOT / "scripts" / "generate-db-password.sh"
 
     if not script_path.exists():
         pytest.skip("Password generation script not found")
@@ -184,13 +191,11 @@ def test_password_generation_script_syntax():
     ), "Script should create docker-compose.override.yml"
 
 
-@pytest.mark.skipif(
-    not Path(__file__).parent.parent.parent.parent / "docker-compose.yml",
-    reason="docker-compose.yml not accessible",
-)
+@pytest.mark.skip(reason="Standalone repo uses .env file instead of docker-compose.override.yml")
 def test_docker_compose_override_pattern():
     """Verify docker-compose.override.yml pattern is correct if it exists."""
-    override_file = Path(__file__).parents[3] / "docker-compose.override.yml"
+    # This test is skipped for standalone repo - password is in .env
+    override_file = PROJECT_ROOT / "docker-compose.override.yml"
 
     if not override_file.exists():
         pytest.skip("docker-compose.override.yml not generated yet - run generate-db-password.sh")

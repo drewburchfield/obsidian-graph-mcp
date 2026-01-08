@@ -7,18 +7,40 @@ Supports automatic chunking for large notes (>32k tokens):
 - Uses voyage-context-3 contextualized_embed for multi-chunk notes
 - Zero overlap (voyage-context-3 maintains context without overlap)
 - JSON caching for security
+
+Security features:
+- API key redaction in logs
+- Retry with exponential backoff on API errors
+- Configurable timeout on API calls
 """
 
+import asyncio
 import hashlib
 import json
 import os
+import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import voyageai
 from loguru import logger
 
 from .exceptions import EmbeddingError
+
+
+# Patterns for redacting sensitive information from logs
+_SENSITIVE_PATTERNS = [
+    (re.compile(r"(pa-[A-Za-z0-9_-]{20,})"), "[VOYAGE_API_KEY]"),  # Voyage API key
+    (re.compile(r"(VOYAGE_API_KEY[=:]\s*)([^\s]+)"), r"\1[REDACTED]"),
+]
+
+
+def _redact_sensitive(message: str) -> str:
+    """Redact API keys and other sensitive data from log messages."""
+    for pattern, replacement in _SENSITIVE_PATTERNS:
+        message = pattern.sub(replacement, message)
+    return message
 
 
 class VoyageEmbedder:
@@ -35,6 +57,8 @@ class VoyageEmbedder:
         cache_dir: str = "./data/embeddings_cache",
         batch_size: int = 128,
         requests_per_minute: int = 300,
+        api_timeout: float = 30.0,
+        max_retries: int = 3,
     ):
         """
         Initialize Voyage embedder.
@@ -45,6 +69,8 @@ class VoyageEmbedder:
             cache_dir: Directory for caching embeddings
             batch_size: Texts per API batch
             requests_per_minute: Rate limit
+            api_timeout: Timeout for API calls in seconds (default: 30)
+            max_retries: Maximum retry attempts on API errors (default: 3)
         """
         self.api_key = api_key or os.getenv("VOYAGE_API_KEY")
         if not self.api_key:
@@ -54,6 +80,8 @@ class VoyageEmbedder:
         self.model = model
         self.batch_size = batch_size
         self.requests_per_minute = requests_per_minute
+        self.api_timeout = api_timeout
+        self.max_retries = max_retries
 
         # Cache setup
         self.cache_dir = Path(cache_dir)
@@ -61,9 +89,13 @@ class VoyageEmbedder:
         self.cache_index_path = self.cache_dir / "cache_index.json"
         self.cache_index = self._load_cache_index()
 
-        # Rate limiting
-        self.last_request_time = 0
+        # Rate limiting (async-compatible)
+        self.last_request_time = 0.0
         self.request_interval = 60.0 / requests_per_minute
+        self._rate_limit_lock = asyncio.Lock()
+
+        # Thread pool for running sync API calls with timeout
+        self._executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="voyage_api")
 
         logger.success(f"VoyageEmbedder initialized: {model}")
 
@@ -150,10 +182,11 @@ class VoyageEmbedder:
                 chunk_batch = chunks[i : i + batch_size]
 
                 # Rate limit
-                self._rate_limit()
+                self._rate_limit_sync()
 
-                # Embed this batch of chunks with context
-                result = self.client.contextualized_embed(
+                # Embed this batch of chunks with context (with retry)
+                result = self._call_api_with_retry(
+                    self.client.contextualized_embed,
                     inputs=[chunk_batch],  # One document's chunks
                     model=self.model,
                     input_type=input_type,
@@ -169,9 +202,10 @@ class VoyageEmbedder:
             return (all_embeddings, len(chunks))
 
         except Exception as e:
-            logger.error(f"Chunked embedding failed: {e}", exc_info=True)
+            error_msg = _redact_sensitive(str(e))
+            logger.error(f"Chunked embedding failed: {error_msg}", exc_info=True)
             raise EmbeddingError(
-                f"Failed to embed chunked text: {e}", text_preview=text[:100], cause=e
+                f"Failed to embed chunked text: {error_msg}", text_preview=text[:100], cause=e
             ) from e
 
     def _load_cache_index(self) -> dict:
@@ -190,13 +224,101 @@ class VoyageEmbedder:
         """Generate cache key for text."""
         return hashlib.sha256(f"{self.model}:{text}".encode()).hexdigest()
 
-    def _rate_limit(self):
-        """Enforce rate limiting."""
+    def _rate_limit_sync(self):
+        """Enforce rate limiting (synchronous version for backwards compatibility)."""
         current_time = time.time()
         time_since_last = current_time - self.last_request_time
         if time_since_last < self.request_interval:
             time.sleep(self.request_interval - time_since_last)
         self.last_request_time = time.time()
+
+    async def _rate_limit_async(self):
+        """Enforce rate limiting (async version - non-blocking)."""
+        async with self._rate_limit_lock:
+            current_time = time.time()
+            time_since_last = current_time - self.last_request_time
+            if time_since_last < self.request_interval:
+                await asyncio.sleep(self.request_interval - time_since_last)
+            self.last_request_time = time.time()
+
+    def _call_api_with_retry(self, api_func, *args, **kwargs):
+        """
+        Call Voyage API with retry and exponential backoff.
+
+        Args:
+            api_func: The API function to call
+            *args: Positional arguments for the API function
+            **kwargs: Keyword arguments for the API function
+
+        Returns:
+            API response
+
+        Raises:
+            EmbeddingError: If all retries fail
+        """
+        last_error = None
+
+        for attempt in range(self.max_retries):
+            try:
+                return api_func(*args, **kwargs)
+            except Exception as e:
+                last_error = e
+                error_msg = _redact_sensitive(str(e))
+
+                # Check if it's a rate limit error (429)
+                if "429" in str(e) or "rate" in str(e).lower():
+                    # Exponential backoff: 2^attempt seconds (1, 2, 4, ...)
+                    backoff = 2 ** (attempt + 1)
+                    logger.warning(
+                        f"Rate limited, retrying in {backoff}s (attempt {attempt + 1}/{self.max_retries})"
+                    )
+                    time.sleep(backoff)
+                elif attempt < self.max_retries - 1:
+                    # Other errors: shorter backoff
+                    backoff = 1 * (attempt + 1)
+                    logger.warning(
+                        f"API error: {error_msg}, retrying in {backoff}s "
+                        f"(attempt {attempt + 1}/{self.max_retries})"
+                    )
+                    time.sleep(backoff)
+                else:
+                    logger.error(f"API call failed after {self.max_retries} attempts: {error_msg}")
+
+        raise EmbeddingError(
+            f"API call failed after {self.max_retries} attempts: {_redact_sensitive(str(last_error))}",
+            cause=last_error,
+        )
+
+    async def _call_api_with_timeout(self, api_func, *args, **kwargs):
+        """
+        Call Voyage API with timeout wrapper (runs in thread pool).
+
+        Args:
+            api_func: The API function to call
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+
+        Returns:
+            API response
+
+        Raises:
+            EmbeddingError: If timeout or API error occurs
+        """
+        loop = asyncio.get_event_loop()
+
+        try:
+            result = await asyncio.wait_for(
+                loop.run_in_executor(
+                    self._executor,
+                    lambda: self._call_api_with_retry(api_func, *args, **kwargs),
+                ),
+                timeout=self.api_timeout,
+            )
+            return result
+        except asyncio.TimeoutError as e:
+            raise EmbeddingError(
+                f"API call timed out after {self.api_timeout}s", cause=e
+            ) from e
 
     def embed(self, text: str, input_type: str = "document", use_cache: bool = True) -> list[float]:
         """
@@ -271,7 +393,7 @@ class VoyageEmbedder:
                 batch = texts_to_embed[i : i + self.batch_size]
 
                 # Rate limiting
-                self._rate_limit()
+                self._rate_limit_sync()
 
                 try:
                     # Filter out empty strings (Voyage API rejects them)
@@ -294,11 +416,12 @@ class VoyageEmbedder:
                     # Each note is a single-element list (whole note, not chunked)
                     nested_inputs = [[text] for text in non_empty]
 
-                    # Call Voyage API with error handling
-                    # Note: voyageai client doesn't support timeout parameter
-                    # Consider adding timeout wrapper if API calls hang
-                    result = self.client.contextualized_embed(
-                        inputs=nested_inputs, model=self.model, input_type=input_type
+                    # Call Voyage API with retry and error handling
+                    result = self._call_api_with_retry(
+                        self.client.contextualized_embed,
+                        inputs=nested_inputs,
+                        model=self.model,
+                        input_type=input_type,
                     )
 
                     # Extract embeddings from contextualized result
@@ -329,9 +452,10 @@ class VoyageEmbedder:
                         self._save_cache_index()
 
                 except Exception as e:
-                    logger.error(f"Embedding batch failed: {e}", exc_info=True)
+                    error_msg = _redact_sensitive(str(e))
+                    logger.error(f"Embedding batch failed: {error_msg}", exc_info=True)
                     raise EmbeddingError(
-                        f"Batch embedding failed: {e}",
+                        f"Batch embedding failed: {error_msg}",
                         text_preview=batch[0][:100] if batch else "",
                         cause=e,
                     ) from e

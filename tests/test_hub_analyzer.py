@@ -175,23 +175,27 @@ async def test_ensure_fresh_counts_skips_if_locked(mock_store):
 
 @pytest.mark.asyncio
 async def test_refresh_updates_connection_counts(mock_store):
-    """Test that refresh properly updates connection_count for all notes."""
+    """Test that refresh properly updates connection_count for all notes.
+
+    The batched approach processes all notes that fit in a batch (100 notes)
+    with a single UPDATE statement, so 3 notes = 1 batch = 1 execute call.
+    """
     analyzer = HubAnalyzer(mock_store)
 
     # Mock database with 3 notes
     mock_conn = AsyncMock()
 
-    # First call to fetch returns all notes
+    # fetchval: first call returns total note count (3)
+    mock_conn.fetchval = AsyncMock(return_value=3)
+
+    # fetch: returns batch of note paths, then empty on second call (end of batches)
     mock_conn.fetch = AsyncMock(
-        return_value=[
-            {"path": "note1.md", "embedding": [0.1] * 1024},
-            {"path": "note2.md", "embedding": [0.2] * 1024},
-            {"path": "note3.md", "embedding": [0.3] * 1024},
+        side_effect=[
+            [{"path": "note1.md"}, {"path": "note2.md"}, {"path": "note3.md"}],
+            [],  # No more batches
         ]
     )
 
-    # fetchval returns connection counts
-    mock_conn.fetchval = AsyncMock(return_value=2)  # Each note has 2 connections
     mock_conn.execute = AsyncMock()
 
     class MockAcquire:
@@ -207,8 +211,8 @@ async def test_refresh_updates_connection_counts(mock_store):
     # Run refresh
     await analyzer._refresh_all_counts(threshold=0.5)
 
-    # Should have executed UPDATE for each note
-    assert mock_conn.execute.call_count == 3
+    # Batched approach: 3 notes fit in 1 batch (batch_size=100), so 1 execute call
+    assert mock_conn.execute.call_count == 1
 
 
 @pytest.mark.asyncio

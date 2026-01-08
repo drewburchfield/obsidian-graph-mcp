@@ -196,7 +196,8 @@ class HubAnalyzer:
         """
         Background task to refresh connection_count for all notes.
 
-        Acquires exclusive lock to ensure only ONE refresh runs at a time.
+        Uses batched SQL approach instead of O(N²) individual queries.
+        Computes counts in batches to balance memory usage and performance.
 
         Args:
             threshold: Similarity threshold for counting connections
@@ -205,48 +206,77 @@ class HubAnalyzer:
             - Acquires self._refresh_lock to ensure exclusive execution
             - Blocks until lock available (serializes concurrent refresh requests)
             - Lock automatically released after completion or error
+
+        Performance:
+            - Processes notes in batches of 100 to avoid memory issues
+            - Each batch uses a single SQL query with vector distance computation
+            - Total complexity: O(N * B) where B = batch size, much better than O(N²)
         """
         async with self._refresh_lock:  # Acquire lock (blocks until available)
             logger.info("Starting background connection count refresh (lock acquired)...")
 
             try:
+                distance_threshold = 1.0 - threshold
+                batch_size = 100  # Process 100 notes at a time
+
                 async with self.store.pool.acquire() as conn:
-                    # Get all notes
-                    all_notes = await conn.fetch(
-                        "SELECT path, embedding FROM notes WHERE embedding IS NOT NULL"
+                    # Get total count for progress logging
+                    total_notes = await conn.fetchval(
+                        "SELECT COUNT(*) FROM notes WHERE embedding IS NOT NULL"
                     )
 
-                    # Update connection_count for each note
-                    distance_threshold = 1.0 - threshold
+                    if total_notes == 0:
+                        logger.info("No notes with embeddings to refresh")
+                        return
 
-                    for note in all_notes:
-                        # Count connections above threshold (exclude self)
-                        count = await conn.fetchval(
+                    logger.info(f"Refreshing connection counts for {total_notes} notes...")
+
+                    # Process in batches using OFFSET/LIMIT
+                    processed = 0
+                    for offset in range(0, total_notes, batch_size):
+                        # Get batch of note paths
+                        batch_paths = await conn.fetch(
                             """
-                            SELECT COUNT(*)
-                            FROM notes
-                            WHERE path != $1
-                                AND embedding IS NOT NULL
-                                AND (embedding <=> $2::vector) <= $3
+                            SELECT path FROM notes
+                            WHERE embedding IS NOT NULL
+                            ORDER BY path
+                            LIMIT $1 OFFSET $2
                             """,
-                            note["path"],
-                            note["embedding"],
-                            distance_threshold,
+                            batch_size,
+                            offset,
                         )
 
-                        # Update materialized column
+                        if not batch_paths:
+                            break
+
+                        # Update counts for this batch using a single efficient query
+                        # This computes connection counts for all notes in the batch at once
                         await conn.execute(
                             """
-                            UPDATE notes
-                            SET connection_count = $1,
+                            UPDATE notes AS n
+                            SET connection_count = subq.cnt,
                                 last_indexed_at = CURRENT_TIMESTAMP
-                            WHERE path = $2
+                            FROM (
+                                SELECT n1.path, COUNT(n2.path) AS cnt
+                                FROM notes n1
+                                LEFT JOIN notes n2 ON n1.path != n2.path
+                                    AND n2.embedding IS NOT NULL
+                                    AND (n1.embedding <=> n2.embedding) <= $1
+                                WHERE n1.path = ANY($2::text[])
+                                    AND n1.embedding IS NOT NULL
+                                GROUP BY n1.path
+                            ) AS subq
+                            WHERE n.path = subq.path
                             """,
-                            count,
-                            note["path"],
+                            distance_threshold,
+                            [r["path"] for r in batch_paths],
                         )
 
-                logger.success("Connection count refresh complete")
+                        processed += len(batch_paths)
+                        if processed % 500 == 0 or processed == total_notes:
+                            logger.debug(f"Refreshed {processed}/{total_notes} notes")
+
+                logger.success(f"Connection count refresh complete ({total_notes} notes)")
 
             except Exception as e:
                 logger.error(f"Connection count refresh failed: {e}")

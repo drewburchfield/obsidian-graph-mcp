@@ -1,28 +1,17 @@
 """
-Unit tests for MCP tools.
+Integration tests for MCP tools.
 
 Tests the 3 required tools: search_notes, get_similar_notes, get_connection_graph
 
 NOTE: These are integration tests that require:
 - PostgreSQL with pgvector running
 - Valid VOYAGE_API_KEY for embeddings
-- Proper async event loop handling
 
-Skipped in CI due to event loop isolation issues with module-scoped fixtures.
+These tests verify the full stack works correctly.
+Mark as slow to allow skipping in quick test runs.
 """
 
-import asyncio
 import os
-
-import pytest
-
-# Skip all tests in this module if running in CI (event loop issues with module-scoped fixtures)
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI") == "true" or os.getenv("GITHUB_ACTIONS") == "true",
-    reason="Integration tests skipped in CI due to async event loop issues",
-)
-
-# Add src to path
 import sys
 import time
 from datetime import datetime
@@ -31,23 +20,24 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
+# Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.embedder import VoyageEmbedder
 from src.graph_builder import GraphBuilder
 from src.vector_store import Note, PostgreSQLVectorStore
 
+# Skip if no VOYAGE_API_KEY (required for embeddings)
+pytestmark = [
+    pytest.mark.skipif(
+        not os.getenv("VOYAGE_API_KEY"),
+        reason="VOYAGE_API_KEY not set - skipping integration tests",
+    ),
+    pytest.mark.slow,
+]
 
-# Fixtures
-@pytest.fixture(scope="module")
-def event_loop():
-    """Create event loop for async tests."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
-
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture
 async def setup_test_data():
     """Set up test database with sample notes."""
     embedder = VoyageEmbedder()

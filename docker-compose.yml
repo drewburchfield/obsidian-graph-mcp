@@ -13,7 +13,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=obsidian_graph
       - POSTGRES_USER=obsidian
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - VOYAGE_API_KEY=${VOYAGE_API_KEY}
       - OBSIDIAN_VAULT_PATH=/vault
       - OBSIDIAN_WATCH_ENABLED=${OBSIDIAN_WATCH_ENABLED:-true}
@@ -44,7 +44,7 @@ services:
     environment:
       - POSTGRES_DB=obsidian_graph
       - POSTGRES_USER=obsidian
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - obsidian-postgres-data:/var/lib/postgresql/data
       - ./src/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
@@ -68,7 +68,7 @@ services:
 
 networks:
   default:
-    name: mcp_servers
+    name: obsidian-graph-mcp
 
 volumes:
   obsidian-postgres-data:
