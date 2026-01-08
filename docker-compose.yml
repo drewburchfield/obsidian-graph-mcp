@@ -1,25 +1,37 @@
-version: "3.8"
-
 services:
   obsidian-graph:
     build: .
-    container_name: obsidian-graph-mcp
+    image: mcp-obsidian-graph
+    container_name: mcp-obsidian-graph
     stdin_open: true
+    tty: true
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      - POSTGRES_HOST=postgres
+      - POSTGRES_HOST=mcp-obsidian-graph-pgvector
       - POSTGRES_PORT=5432
       - POSTGRES_DB=obsidian_graph
       - POSTGRES_USER=obsidian
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
       - VOYAGE_API_KEY=${VOYAGE_API_KEY}
       - OBSIDIAN_VAULT_PATH=/vault
+      - OBSIDIAN_WATCH_ENABLED=${OBSIDIAN_WATCH_ENABLED:-true}
+      - OBSIDIAN_DEBOUNCE_SECONDS=${OBSIDIAN_DEBOUNCE_SECONDS:-30}
+      - POSTGRES_MIN_CONNECTIONS=${POSTGRES_MIN_CONNECTIONS:-5}
+      - POSTGRES_MAX_CONNECTIONS=${POSTGRES_MAX_CONNECTIONS:-20}
+      - HNSW_M=${HNSW_M:-16}
+      - HNSW_EF_CONSTRUCTION=${HNSW_EF_CONSTRUCTION:-64}
+      - EMBEDDING_BATCH_SIZE=${EMBEDDING_BATCH_SIZE:-128}
+      - EMBEDDING_REQUESTS_PER_MINUTE=${EMBEDDING_REQUESTS_PER_MINUTE:-300}
+      - MCP_SERVER_NAME=${MCP_SERVER_NAME:-obsidian-graph}
+      - MCP_SERVER_VERSION=${MCP_SERVER_VERSION:-1.0.0}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       # Mount your Obsidian vault here (read-only for safety)
-      - ${OBSIDIAN_VAULT_PATH:-./example-vault}:/vault:ro
+      - "${OBSIDIAN_VAULT_PATH:-./example-vault}:/vault:ro"
+      # Persist embeddings cache
+      - obsidian-graph-cache:/home/mcpuser/.obsidian-graph/data
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -28,19 +40,36 @@ services:
 
   postgres:
     image: pgvector/pgvector:pg15
-    container_name: obsidian-graph-postgres
+    container_name: mcp-obsidian-graph-pgvector
     environment:
       - POSTGRES_DB=obsidian_graph
       - POSTGRES_USER=obsidian
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
     volumes:
       - obsidian-postgres-data:/var/lib/postgresql/data
+      - ./src/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U obsidian -d obsidian_graph"]
       interval: 5s
       timeout: 5s
       retries: 5
+    # Security hardening
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
+
+networks:
+  default:
+    name: mcp_servers
 
 volumes:
   obsidian-postgres-data:
+  obsidian-graph-cache:
