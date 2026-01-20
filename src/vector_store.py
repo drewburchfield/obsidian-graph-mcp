@@ -386,7 +386,7 @@ class PostgreSQLVectorStore:
             paths: List of note paths to delete
 
         Returns:
-            Number of notes deleted
+            Number of distinct notes deleted (not chunk count)
         """
         if not self.pool:
             raise VectorStoreError("PostgreSQL store not initialized")
@@ -396,10 +396,12 @@ class PostgreSQLVectorStore:
 
         try:
             async with self.pool.acquire() as conn:
-                result = await conn.execute("DELETE FROM notes WHERE path = ANY($1)", paths)
-                # Result format: "DELETE N"
-                count = int(result.split()[-1])
-                return count
+                # Use RETURNING to get distinct note count (not chunk count)
+                rows = await conn.fetch(
+                    "DELETE FROM notes WHERE path = ANY($1) RETURNING path", paths
+                )
+                # Count distinct paths (a chunked note has multiple rows with same path)
+                return len({row["path"] for row in rows})
         except Exception as e:
             raise VectorStoreError(f"Delete failed: {e}") from e
 

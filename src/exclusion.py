@@ -7,10 +7,16 @@ Supports:
 - Glob pattern matching (*, **)
 """
 
+from __future__ import annotations
+
 import fnmatch
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
+
+if TYPE_CHECKING:
+    from .vector_store import PostgreSQLVectorStore
 
 # Always excluded, regardless of config
 DEFAULT_EXCLUSIONS = [
@@ -115,7 +121,7 @@ def load_exclusion_filter(vault_path: str) -> ExclusionFilter:
 
             logger.info(f"Loaded {len(custom_patterns)} custom exclusion patterns")
 
-        except Exception as e:
+        except OSError as e:
             logger.warning(f"Error reading exclusion config: {e}")
     else:
         logger.debug(
@@ -126,7 +132,11 @@ def load_exclusion_filter(vault_path: str) -> ExclusionFilter:
     return ExclusionFilter(custom_patterns)
 
 
-async def cleanup_excluded_notes(store, vault_path: str) -> int:
+async def cleanup_excluded_notes(
+    store: PostgreSQLVectorStore,
+    vault_path: str,
+    exclusion_filter: ExclusionFilter | None = None,
+) -> int:
     """
     Remove notes from database that match exclusion patterns.
 
@@ -136,12 +146,14 @@ async def cleanup_excluded_notes(store, vault_path: str) -> int:
     Args:
         store: PostgreSQLVectorStore instance (must be initialized)
         vault_path: Path to Obsidian vault (for loading exclusion config)
+        exclusion_filter: Optional pre-loaded filter (avoids double-loading)
 
     Returns:
         Number of notes removed
     """
-    # Load exclusion filter
-    exclusion_filter = load_exclusion_filter(vault_path)
+    # Use provided filter or load one
+    if exclusion_filter is None:
+        exclusion_filter = load_exclusion_filter(vault_path)
 
     # Get all paths from database
     all_paths = await store.get_all_paths()

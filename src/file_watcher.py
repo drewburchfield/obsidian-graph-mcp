@@ -76,6 +76,25 @@ class ObsidianFileWatcher(FileSystemEventHandler):
 
         logger.info(f"File watcher initialized (debounce: {debounce_seconds}s)")
 
+    def _is_excluded(self, file_path: str) -> bool:
+        """
+        Check if a file path should be excluded from indexing.
+
+        Args:
+            file_path: Absolute path to the file
+
+        Returns:
+            True if the file should be excluded, False otherwise
+        """
+        try:
+            rel_path = str(Path(file_path).relative_to(self.vault_path))
+            if self.exclusion_filter.should_exclude(rel_path):
+                logger.debug(f"Ignoring excluded file: {rel_path}")
+                return True
+        except ValueError:
+            pass  # File outside vault, let it proceed
+        return False
+
     def _handle_reindex_future_error(self, future: asyncio.Future):
         """
         Error callback for threadsafe reindex futures.
@@ -103,13 +122,8 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         file_path = event.src_path
 
         # Check exclusion filter
-        try:
-            rel_path = str(Path(file_path).relative_to(self.vault_path))
-            if self.exclusion_filter.should_exclude(rel_path):
-                logger.debug(f"Ignoring excluded file: {rel_path}")
-                return
-        except ValueError:
-            pass  # File outside vault, let it proceed
+        if self._is_excluded(file_path):
+            return
 
         logger.debug(f"File modified: {file_path}")
 
@@ -129,13 +143,8 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         file_path = event.src_path
 
         # Check exclusion filter
-        try:
-            rel_path = str(Path(file_path).relative_to(self.vault_path))
-            if self.exclusion_filter.should_exclude(rel_path):
-                logger.debug(f"Ignoring excluded file: {rel_path}")
-                return
-        except ValueError:
-            pass  # File outside vault, let it proceed
+        if self._is_excluded(file_path):
+            return
 
         logger.debug(f"File created: {file_path}")
 
