@@ -27,7 +27,7 @@ This MCP server enables AI-powered semantic analysis of your Obsidian vault, dis
 - **Embeddings**: Voyage Context-3 (1024 dimensions, contextualized)
 - **Vector Store**: PostgreSQL 15+ with pgvector HNSW indexing
 - **Performance**: 0.9ms search (555x better than target), <2s graph building
-- **File Watching**: Watchdog with 30-second debounce for batch edits
+- **File Watching**: Watchdog with polling mode for cloud sync compatibility
 - **Transport**: Docker stdio for MCP communication
 
 ## MCP Tools
@@ -186,6 +186,10 @@ OBSIDIAN_VAULT_PATH=/vault  # Inside container
 OBSIDIAN_WATCH_ENABLED=true
 OBSIDIAN_DEBOUNCE_SECONDS=30
 
+# Polling mode (auto-enabled for Docker and cloud-synced vaults)
+# OBSIDIAN_WATCH_USE_POLLING=       # true | false (unset = auto-detect)
+# OBSIDIAN_WATCH_POLLING_INTERVAL=30  # seconds between polls (default: 30)
+
 # Performance
 POSTGRES_MIN_CONNECTIONS=5
 POSTGRES_MAX_CONNECTIONS=20
@@ -195,6 +199,33 @@ EMBEDDING_REQUESTS_PER_MINUTE=300
 # HNSW index (advanced)
 HNSW_M=16
 HNSW_EF_CONSTRUCTION=64
+```
+
+### Cloud Sync Support (iCloud, Google Drive, Dropbox, OneDrive)
+
+If your Obsidian vault is stored in a cloud-synced folder, the file watcher automatically uses **polling mode** for reliable change detection. This is because Docker's filesystem events don't propagate reliably through cloud sync virtualization layers.
+
+**Auto-detection:** Polling mode is automatically enabled when:
+- Running inside Docker (always uses polling for reliability)
+- Vault path contains cloud sync patterns (`Library/Mobile Documents`, `Library/CloudStorage`, etc.)
+
+**How it works:**
+- Polling mode compares directory snapshots every 30 seconds (configurable)
+- Detects file creates, modifications, moves, and deletions
+- Slightly higher CPU than native filesystem events, but works reliably everywhere
+
+**Mobile workflow:** Edit notes on mobile (iOS/Android) via Obsidian's iCloud/Google Drive sync. Changes sync to your Mac, and the polling watcher detects them within the polling interval.
+
+**Override behavior:**
+```bash
+# Force polling on (for edge cases)
+OBSIDIAN_WATCH_USE_POLLING=true
+
+# Force native events (may miss changes with cloud sync)
+OBSIDIAN_WATCH_USE_POLLING=false
+
+# Faster detection (higher CPU)
+OBSIDIAN_WATCH_POLLING_INTERVAL=15
 ```
 
 ### Excluding Folders from Indexing
@@ -338,7 +369,10 @@ grep POSTGRES_ configs/obsidian-graph/.env.instance
 ### File changes not detected
 - Verify `OBSIDIAN_WATCH_ENABLED=true`
 - Check logs: `docker logs mcp-obsidian-graph`
+- Look for: `Watching vault: /vault [polling (interval: 30s)]`
 - File watcher starts after PostgreSQL connection
+- **Cloud sync users**: Changes take up to polling interval (default 30s) plus cloud sync time
+- **Reduce detection time**: Set `OBSIDIAN_WATCH_POLLING_INTERVAL=15` in `.env`
 
 ## Development
 

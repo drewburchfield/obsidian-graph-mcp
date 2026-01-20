@@ -195,7 +195,7 @@ class VoyageEmbedder:
                 batch_embeddings = result.results[0].embeddings
                 all_embeddings.extend(batch_embeddings)
 
-                logger.debug(f"Embedded chunks {i+1}-{i+len(chunk_batch)} of {len(chunks)}")
+                logger.debug(f"Embedded chunks {i + 1}-{i + len(chunk_batch)} of {len(chunks)}")
 
             logger.success(f"Embedded {len(all_embeddings)} chunks with context preserved")
             return (all_embeddings, len(chunks))

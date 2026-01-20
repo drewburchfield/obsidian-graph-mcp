@@ -39,6 +39,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Cloud Sync Support**: Automatic polling mode for iCloud, Google Drive, Dropbox, and OneDrive vaults
+  - Auto-detection of cloud-synced paths on macOS
+  - Auto-enabled in Docker for reliable file watching
+  - Configurable polling interval via `OBSIDIAN_WATCH_POLLING_INTERVAL`
+  - Override with `OBSIDIAN_WATCH_USE_POLLING=true|false`
+- **File Deletion Handling**: `on_deleted` handler removes notes from database when files are deleted
+- **File Move Handling**: `on_moved` handler updates database when files are renamed or moved
+- **Orphan Cleanup**: Startup scan removes stale database entries for files that no longer exist
+- **Folder Exclusion**: Custom `.obsidian-graph.conf` file for excluding folders from indexing
+
+### Fixed
+- Stale database entries no longer persist after file deletions (Issue #2)
+- File moves now update paths correctly instead of creating duplicates
+
+### Changed
+- File watcher now defaults to polling mode in Docker (native filesystem events unreliable)
+- Startup scan now cleans up orphan paths before re-indexing stale files
+
+## [Unreleased - Planned]
+
 ### Planned
 - Additional embedding provider support (OpenAI, SentenceTransformers)
 - Cluster analysis tool (community detection)

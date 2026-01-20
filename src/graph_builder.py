@@ -118,7 +118,7 @@ class GraphBuilder:
                     if neighbor.path not in visited:
                         queue.append((neighbor.path, level + 1, current_path))
 
-        logger.info(f"Graph built: {len(nodes)} nodes, {len(edges)} edges, " f"{depth} levels")
+        logger.info(f"Graph built: {len(nodes)} nodes, {len(edges)} edges, {depth} levels")
 
         return {
             "root": {"path": root_note["path"], "title": root_note["title"]},

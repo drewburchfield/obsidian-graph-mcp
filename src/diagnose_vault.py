@@ -50,7 +50,7 @@ for i, file_path in enumerate(md_files, 1):
         problematic_files.append((rel_path, str(e)))
         print(f"[{i}/{len(md_files)}] ERROR: {rel_path} - {e}")
 
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print("Summary:")
 print(f"  Successful: {successful}/{len(md_files)}")
 print(f"  Empty files: {len(empty_files)}")

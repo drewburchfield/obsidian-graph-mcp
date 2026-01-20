@@ -87,14 +87,14 @@ def validate_int_range(
         value_int = int(value)
     except (ValueError, TypeError):
         logger.warning(
-            f"Invalid type for '{param_name}': {type(value).__name__}, " f"using default {default}"
+            f"Invalid type for '{param_name}': {type(value).__name__}, using default {default}"
         )
         return default
 
     # Range check
     if value_int < min_val or value_int > max_val:
         raise ValidationError(
-            f"Parameter '{param_name}' must be in range [{min_val}, {max_val}], " f"got {value_int}"
+            f"Parameter '{param_name}' must be in range [{min_val}, {max_val}], got {value_int}"
         )
 
     return value_int
@@ -129,15 +129,14 @@ def validate_float_range(
         value_float = float(value)
     except (ValueError, TypeError):
         logger.warning(
-            f"Invalid type for '{param_name}': {type(value).__name__}, " f"using default {default}"
+            f"Invalid type for '{param_name}': {type(value).__name__}, using default {default}"
         )
         return default
 
     # Range check
     if value_float < min_val or value_float > max_val:
         raise ValidationError(
-            f"Parameter '{param_name}' must be in range [{min_val}, {max_val}], "
-            f"got {value_float}"
+            f"Parameter '{param_name}' must be in range [{min_val}, {max_val}], got {value_float}"
         )
 
     return value_float

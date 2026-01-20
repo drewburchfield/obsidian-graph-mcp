@@ -18,6 +18,10 @@ services:
       - OBSIDIAN_VAULT_PATH=/vault
       - OBSIDIAN_WATCH_ENABLED=${OBSIDIAN_WATCH_ENABLED:-true}
       - OBSIDIAN_DEBOUNCE_SECONDS=${OBSIDIAN_DEBOUNCE_SECONDS:-30}
+      # Polling mode: auto-enabled in Docker for reliable cloud sync support
+      # Set to 'false' to use native filesystem events (may miss changes with iCloud/GDrive)
+      - OBSIDIAN_WATCH_USE_POLLING=${OBSIDIAN_WATCH_USE_POLLING:-}
+      - OBSIDIAN_WATCH_POLLING_INTERVAL=${OBSIDIAN_WATCH_POLLING_INTERVAL:-30}
       - POSTGRES_MIN_CONNECTIONS=${POSTGRES_MIN_CONNECTIONS:-5}
       - POSTGRES_MAX_CONNECTIONS=${POSTGRES_MAX_CONNECTIONS:-20}
       - HNSW_M=${HNSW_M:-16}

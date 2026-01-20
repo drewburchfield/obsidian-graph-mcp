@@ -97,7 +97,7 @@ def validate_vault_path(user_path: str, vault_root: str) -> str:
         full_path.relative_to(vault_root_resolved)
     except ValueError as e:
         raise SecurityError(
-            f"Path escapes vault boundaries: {user_path} " f"resolves to {full_path}"
+            f"Path escapes vault boundaries: {user_path} resolves to {full_path}"
         ) from e
 
     logger.debug(f"Path validated: {user_path} -> {sanitized}")
