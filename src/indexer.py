@@ -13,6 +13,7 @@ from loguru import logger
 
 from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
+from .exclusion import cleanup_excluded_notes, load_exclusion_filter
 from .vector_store import Note, PostgreSQLVectorStore
 
 
@@ -20,18 +21,38 @@ def scan_vault(vault_path: str) -> list[Path]:
     """
     Scan Obsidian vault for all markdown files.
 
+    Respects exclusion patterns from .obsidian-graph.conf.
+
     Args:
         vault_path: Path to Obsidian vault
 
     Returns:
-        List of markdown file paths
+        List of markdown file paths (excluding filtered paths)
     """
     vault = Path(vault_path)
     if not vault.exists():
         raise FileNotFoundError(f"Vault not found: {vault_path}")
 
-    md_files = list(vault.rglob("*.md"))
-    logger.info(f"Found {len(md_files)} markdown files in vault")
+    # Load exclusion filter
+    exclusion_filter = load_exclusion_filter(vault_path)
+
+    # Find all markdown files
+    all_md_files = list(vault.rglob("*.md"))
+
+    # Filter out excluded paths
+    md_files = []
+    excluded_count = 0
+    for file_path in all_md_files:
+        rel_path = str(file_path.relative_to(vault))
+        if exclusion_filter.should_exclude(rel_path):
+            excluded_count += 1
+            continue
+        md_files.append(file_path)
+
+    logger.info(
+        f"Found {len(md_files)} markdown files in vault "
+        f"({excluded_count} excluded by filters)"
+    )
     return md_files
 
 
@@ -68,6 +89,9 @@ async def index_vault(vault_path: str, batch_size: int = 100):
     await store.initialize()
 
     try:
+        # Clean up any previously indexed notes that are now excluded
+        await cleanup_excluded_notes(store, vault_path)
+
         # Scan vault
         md_files = scan_vault(vault_path)
         vault_root = Path(vault_path)

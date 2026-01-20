@@ -58,6 +58,56 @@ def test_scan_vault_raises_on_missing_vault():
         scan_vault("/nonexistent/vault")
 
 
+def test_scan_vault_excludes_configured_paths(tmp_path):
+    """Test that scan_vault respects exclusion config."""
+    vault = tmp_path / "vault"
+    vault.mkdir()
+
+    # Create normal note
+    (vault / "note.md").write_text("# Note")
+
+    # Create excluded folders
+    trash = vault / "07_Archive" / "Trash"
+    trash.mkdir(parents=True)
+    (trash / "deleted.md").write_text("# Deleted")
+
+    obsidian = vault / ".obsidian"
+    obsidian.mkdir()
+    (obsidian / "config.md").write_text("config")
+
+    # Create config file
+    (vault / ".obsidian-graph.conf").write_text("07_Archive/Trash/\n")
+
+    md_files = scan_vault(str(vault))
+
+    # Should only find the non-excluded note
+    paths = [str(f.relative_to(vault)) for f in md_files]
+    assert "note.md" in paths
+    assert "07_Archive/Trash/deleted.md" not in paths
+    assert ".obsidian/config.md" not in paths
+
+
+def test_scan_vault_uses_defaults_without_config(tmp_path):
+    """Test that default exclusions work without config file."""
+    vault = tmp_path / "vault"
+    vault.mkdir()
+
+    # Create normal note
+    (vault / "note.md").write_text("# Note")
+
+    # Create .obsidian folder (default exclusion)
+    obsidian = vault / ".obsidian"
+    obsidian.mkdir()
+    (obsidian / "workspace.md").write_text("workspace")
+
+    # No config file - should still exclude .obsidian by default
+    md_files = scan_vault(str(vault))
+
+    paths = [str(f.relative_to(vault)) for f in md_files]
+    assert "note.md" in paths
+    assert ".obsidian/workspace.md" not in paths
+
+
 def test_extract_title_from_filename():
     """Test title extraction from filename."""
     test_cases = [

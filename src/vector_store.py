@@ -378,6 +378,50 @@ class PostgreSQLVectorStore:
         except Exception as e:
             raise VectorStoreError(f"Count query failed: {e}") from e
 
+    async def delete_notes_by_paths(self, paths: list[str]) -> int:
+        """
+        Delete notes by their paths.
+
+        Args:
+            paths: List of note paths to delete
+
+        Returns:
+            Number of notes deleted
+        """
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+
+        if not paths:
+            return 0
+
+        try:
+            async with self.pool.acquire() as conn:
+                result = await conn.execute(
+                    "DELETE FROM notes WHERE path = ANY($1)", paths
+                )
+                # Result format: "DELETE N"
+                count = int(result.split()[-1])
+                return count
+        except Exception as e:
+            raise VectorStoreError(f"Delete failed: {e}") from e
+
+    async def get_all_paths(self) -> list[str]:
+        """
+        Get all unique note paths in the database.
+
+        Returns:
+            List of all note paths
+        """
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+
+        try:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("SELECT DISTINCT path FROM notes")
+                return [row["path"] for row in rows]
+        except Exception as e:
+            raise VectorStoreError(f"Get paths failed: {e}") from e
+
     def get_pool_stats(self) -> dict:
         """
         Get connection pool statistics for monitoring.

@@ -197,6 +197,34 @@ HNSW_M=16
 HNSW_EF_CONSTRUCTION=64
 ```
 
+### Excluding Folders from Indexing
+
+By default, the indexer excludes common system and tool folders:
+- `.obsidian/` / `.trash/` / `.Trash/` (Obsidian system)
+- `.git/` / `.github/` (version control)
+- `.vscode/` / `.cursor/` (editor config)
+- `.claude/` / `.aider/` / `.smart-env/` (AI tools)
+
+**Custom Exclusions**: To exclude additional folders (like a soft-delete folder), create `.obsidian-graph.conf` in your vault root:
+
+```conf
+# Exclude soft delete folder
+07_Archive/Trash/
+
+# Exclude drafts
+drafts/
+```
+
+See [`.obsidian-graph.conf.example`](.obsidian-graph.conf.example) for more patterns and examples.
+
+**Pattern Syntax:**
+
+| Pattern | Matches |
+|---------|---------|
+| `folder/` | All files in `folder/` and subfolders |
+| `drafts/*` | All files directly in `drafts/` |
+| `*.tmp.md` | All files ending in `.tmp.md` |
+
 ## Security
 
 This server implements multiple security layers to protect your vault:

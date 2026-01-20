@@ -17,6 +17,7 @@ from watchdog.observers import Observer
 
 from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
+from .exclusion import cleanup_excluded_notes, load_exclusion_filter
 from .vector_store import Note, PostgreSQLVectorStore
 
 
@@ -70,6 +71,9 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         self._reindex_locks: dict[str, asyncio.Lock] = {}
         self._locks_lock = asyncio.Lock()  # Protects _reindex_locks dict itself
 
+        # Load exclusion filter for path filtering
+        self.exclusion_filter = load_exclusion_filter(str(vault_path))
+
         logger.info(f"File watcher initialized (debounce: {debounce_seconds}s)")
 
     def _handle_reindex_future_error(self, future: asyncio.Future):
@@ -97,6 +101,16 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             return
 
         file_path = event.src_path
+
+        # Check exclusion filter
+        try:
+            rel_path = str(Path(file_path).relative_to(self.vault_path))
+            if self.exclusion_filter.should_exclude(rel_path):
+                logger.debug(f"Ignoring excluded file: {rel_path}")
+                return
+        except ValueError:
+            pass  # File outside vault, let it proceed
+
         logger.debug(f"File modified: {file_path}")
 
         # Schedule debounced re-index with error handling
@@ -113,6 +127,16 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             return
 
         file_path = event.src_path
+
+        # Check exclusion filter
+        try:
+            rel_path = str(Path(file_path).relative_to(self.vault_path))
+            if self.exclusion_filter.should_exclude(rel_path):
+                logger.debug(f"Ignoring excluded file: {rel_path}")
+                return
+        except ValueError:
+            pass  # File outside vault, let it proceed
+
         logger.debug(f"File created: {file_path}")
 
         # Schedule debounced re-index with error handling
@@ -302,14 +326,29 @@ class VaultWatcher:
         Scan vault on startup to re-index files changed while offline.
 
         Compares file mtime vs database last_indexed_at.
+        Respects exclusion patterns.
+        Cleans up previously indexed notes that are now excluded.
         """
         if not self.store.pool:
             logger.warning("Store not initialized, skipping startup scan")
             return
 
         try:
+            # Clean up any previously indexed notes that are now excluded
+            await cleanup_excluded_notes(self.store, self.vault_path)
+
             vault = Path(self.vault_path)
-            md_files = list(vault.rglob("*.md"))
+
+            # Load exclusion filter
+            exclusion_filter = load_exclusion_filter(self.vault_path)
+
+            # Find all markdown files and filter excluded
+            all_md_files = list(vault.rglob("*.md"))
+            md_files = []
+            for file_path in all_md_files:
+                rel_path = str(file_path.relative_to(vault))
+                if not exclusion_filter.should_exclude(rel_path):
+                    md_files.append(file_path)
 
             stale_files = []
 
