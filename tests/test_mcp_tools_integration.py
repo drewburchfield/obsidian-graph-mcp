@@ -171,9 +171,9 @@ async def test_mcp_tools_integration(tmp_path):
 
         # Check edge similarities
         for edge in graph["edges"]:
-            assert (
-                0.0 <= edge["similarity"] <= 1.0
-            ), f"Edge similarity {edge['similarity']} out of range"
+            assert 0.0 <= edge["similarity"] <= 1.0, (
+                f"Edge similarity {edge['similarity']} out of range"
+            )
 
         print(f"   - Root: {graph['root']['title']}")
         for node in graph["nodes"][:5]:

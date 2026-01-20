@@ -172,9 +172,9 @@ async def test_lock_cleanup_prevents_memory_leak(tmp_vault, mock_store, mock_emb
     await asyncio.sleep(0.2)
 
     # Lock dict should be small (most locks cleaned up)
-    assert (
-        len(watcher._reindex_locks) < 10
-    ), f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
+    assert len(watcher._reindex_locks) < 10, (
+        f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
+    )
 
 
 @pytest.mark.asyncio
@@ -214,9 +214,9 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
 
     # Should have detected stale files (note1.md, note2.md, folder/note3.md)
     # Empty.md might be skipped
-    assert (
-        vault_watcher.event_handler._reindex_file.call_count >= 3
-    ), "Expected at least 3 stale files detected"
+    assert vault_watcher.event_handler._reindex_file.call_count >= 3, (
+        "Expected at least 3 stale files detected"
+    )
 
 
 @pytest.mark.asyncio
@@ -352,3 +352,438 @@ async def test_file_watcher_excludes_default_patterns(tmp_path, mock_store, mock
 
     # Should not add to pending changes (default exclusion)
     assert str(obsidian / "plugins.md") not in watcher.pending_changes
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_ignores_excluded_paths_on_created(tmp_path, mock_store, mock_embedder):
+    """Test that on_created skips excluded paths."""
+    vault = tmp_path / "vault"
+    vault.mkdir()
+
+    # Create config to exclude trash/
+    (vault / ".obsidian-graph.conf").write_text("trash/\n")
+
+    # Create excluded folder
+    trash = vault / "trash"
+    trash.mkdir()
+    (trash / "deleted.md").write_text("# Deleted")
+    (vault / "normal.md").write_text("# Normal")
+
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    class MockEvent:
+        def __init__(self, src_path):
+            self.src_path = src_path
+            self.is_directory = False
+
+    # Simulate on_created for excluded file
+    watcher.on_created(MockEvent(str(trash / "deleted.md")))
+    # Should not add to pending changes
+    assert str(trash / "deleted.md") not in watcher.pending_changes
+
+    # Simulate on_created for non-excluded file
+    watcher.on_created(MockEvent(str(vault / "normal.md")))
+    # Should add to pending changes
+    assert str(vault / "normal.md") in watcher.pending_changes
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_handles_deletion(tmp_vault, mock_store, mock_embedder):
+    """Test that on_deleted removes the file from the database."""
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    # Create a test file path
+    test_file = tmp_vault / "to_delete.md"
+    test_file.write_text("# Will be deleted")
+
+    class MockEvent:
+        def __init__(self, src_path, is_directory=False):
+            self.src_path = src_path
+            self.is_directory = is_directory
+
+    # Simulate file deletion event
+    event = MockEvent(str(test_file))
+    watcher.on_deleted(event)
+
+    # Wait for async operation to complete
+    await asyncio.sleep(0.1)
+
+    # Should have called delete_notes_by_paths with the relative path
+    mock_store.delete_notes_by_paths.assert_called_once()
+    call_args = mock_store.delete_notes_by_paths.call_args[0][0]
+    assert "to_delete.md" in call_args
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_handles_move(tmp_vault, mock_store, mock_embedder):
+    """Test that on_moved deletes old path and indexes new path."""
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=0.1,  # Short debounce for testing
+    )
+
+    # Create source file
+    old_file = tmp_vault / "old_location.md"
+    old_file.write_text("# Moving this note")
+
+    # New location
+    new_file = tmp_vault / "new_location.md"
+
+    class MockMoveEvent:
+        def __init__(self, src_path, dest_path, is_directory=False):
+            self.src_path = src_path
+            self.dest_path = dest_path
+            self.is_directory = is_directory
+
+    # Simulate file move event
+    event = MockMoveEvent(str(old_file), str(new_file))
+    watcher.on_moved(event)
+
+    # Wait for async operations
+    await asyncio.sleep(0.1)
+
+    # Should have called delete for old path
+    mock_store.delete_notes_by_paths.assert_called_once()
+    delete_args = mock_store.delete_notes_by_paths.call_args[0][0]
+    assert "old_location.md" in delete_args
+
+    # Should have added new path to pending changes for re-indexing
+    assert str(new_file) in watcher.pending_changes
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_handles_move_to_excluded(tmp_path, mock_store, mock_embedder):
+    """Test that moving a file to an excluded location deletes but doesn't re-index."""
+    vault = tmp_path / "vault"
+    vault.mkdir()
+
+    # Create config to exclude trash/
+    (vault / ".obsidian-graph.conf").write_text("trash/\n")
+
+    # Create trash folder and source file
+    trash = vault / "trash"
+    trash.mkdir()
+    source_file = vault / "active.md"
+    source_file.write_text("# Active note")
+
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    # Target location in excluded trash folder
+    dest_file = trash / "active.md"
+
+    class MockMoveEvent:
+        def __init__(self, src_path, dest_path, is_directory=False):
+            self.src_path = src_path
+            self.dest_path = dest_path
+            self.is_directory = is_directory
+
+    # Simulate move to trash
+    event = MockMoveEvent(str(source_file), str(dest_file))
+    watcher.on_moved(event)
+
+    # Wait for async operations
+    await asyncio.sleep(0.1)
+
+    # Should delete old path from DB
+    mock_store.delete_notes_by_paths.assert_called_once()
+
+    # Should NOT add new path to pending (it's excluded)
+    assert str(dest_file) not in watcher.pending_changes
+
+
+@pytest.mark.asyncio
+async def test_startup_scan_cleans_orphans(tmp_vault, mock_store, mock_embedder):
+    """Test that startup scan removes orphan paths from database."""
+    # Create vault watcher
+    vault_watcher = VaultWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        debounce_seconds=1,
+    )
+
+    # Mock get_all_paths to return paths including one that doesn't exist
+    mock_store.get_all_paths = AsyncMock(
+        return_value=["note1.md", "deleted_note.md", "folder/note3.md"]
+    )
+
+    # Mock database connection for stale file detection
+    mock_conn = AsyncMock()
+    mock_conn.fetchval = AsyncMock(return_value=None)  # All files need re-indexing
+
+    class MockAcquire:
+        async def __aenter__(self):
+            return mock_conn
+
+        async def __aexit__(self, *args):
+            pass
+
+    mock_pool = MagicMock()
+    mock_pool.acquire = MagicMock(return_value=MockAcquire())
+    mock_store.pool = mock_pool
+
+    # Create event handler
+    loop = asyncio.get_running_loop()
+    vault_watcher.start(loop)
+
+    # Mock re-index to not actually do anything
+    vault_watcher.event_handler._reindex_file = AsyncMock()
+
+    # Run startup scan
+    await vault_watcher.startup_scan()
+
+    # Should have called delete_notes_by_paths with the orphan path
+    mock_store.delete_notes_by_paths.assert_called()
+    delete_args = mock_store.delete_notes_by_paths.call_args[0][0]
+    assert "deleted_note.md" in delete_args
+    # note1.md and folder/note3.md exist in tmp_vault, so should NOT be deleted
+    assert "note1.md" not in delete_args
+    assert "folder/note3.md" not in delete_args
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_ignores_non_md_deletion(tmp_vault, mock_store, mock_embedder):
+    """Test that deletion of non-markdown files is ignored."""
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    class MockEvent:
+        def __init__(self, src_path, is_directory=False):
+            self.src_path = src_path
+            self.is_directory = is_directory
+
+    # Simulate deletion of non-markdown file
+    watcher.on_deleted(MockEvent(str(tmp_vault / "image.png")))
+
+    # Wait for any async operations
+    await asyncio.sleep(0.1)
+
+    # Should NOT have called delete_notes_by_paths
+    mock_store.delete_notes_by_paths.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_ignores_directory_deletion(tmp_vault, mock_store, mock_embedder):
+    """Test that deletion of directories is ignored."""
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    class MockEvent:
+        def __init__(self, src_path, is_directory=False):
+            self.src_path = src_path
+            self.is_directory = is_directory
+
+    # Simulate deletion of a directory
+    watcher.on_deleted(MockEvent(str(tmp_vault / "folder"), is_directory=True))
+
+    # Wait for any async operations
+    await asyncio.sleep(0.1)
+
+    # Should NOT have called delete_notes_by_paths
+    mock_store.delete_notes_by_paths.assert_not_called()
+
+
+# =============================================================================
+# Polling Mode Tests
+# =============================================================================
+
+from src.file_watcher import is_cloud_synced_path, should_use_polling
+from watchdog.observers.polling import PollingObserver
+
+
+def test_is_cloud_synced_path_detects_icloud():
+    """Test that iCloud Drive paths are detected."""
+    icloud_paths = [
+        "/Users/drew/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/MyVault",
+        "/Users/john/Library/Mobile Documents/iCloud~md~obsidian/Documents/vault",
+    ]
+    for path in icloud_paths:
+        assert is_cloud_synced_path(path), f"Should detect iCloud path: {path}"
+
+
+def test_is_cloud_synced_path_detects_google_drive():
+    """Test that Google Drive paths are detected."""
+    gdrive_paths = [
+        "/Users/drew/Library/CloudStorage/GoogleDrive-drew@example.com/My Drive/Obsidian",
+        "/Users/john/Library/CloudStorage/GoogleDrive-john@company.com/vault",
+    ]
+    for path in gdrive_paths:
+        assert is_cloud_synced_path(path), f"Should detect Google Drive path: {path}"
+
+
+def test_is_cloud_synced_path_detects_dropbox():
+    """Test that Dropbox paths are detected."""
+    dropbox_paths = [
+        "/Users/drew/Library/CloudStorage/Dropbox/Obsidian",
+        "/Users/john/Dropbox/vault",  # Legacy location
+    ]
+    for path in dropbox_paths:
+        assert is_cloud_synced_path(path), f"Should detect Dropbox path: {path}"
+
+
+def test_is_cloud_synced_path_detects_onedrive():
+    """Test that OneDrive paths are detected."""
+    onedrive_paths = [
+        "/Users/drew/Library/CloudStorage/OneDrive-Personal/Obsidian",
+        "/Users/john/Library/CloudStorage/OneDrive-Company/Documents/vault",
+    ]
+    for path in onedrive_paths:
+        assert is_cloud_synced_path(path), f"Should detect OneDrive path: {path}"
+
+
+def test_is_cloud_synced_path_returns_false_for_local():
+    """Test that local paths are not detected as cloud-synced."""
+    local_paths = [
+        "/Users/drew/Documents/Obsidian",
+        "/tmp/vault",
+        "/home/user/obsidian-vault",
+        "/vault",  # Docker default path
+    ]
+    for path in local_paths:
+        assert not is_cloud_synced_path(path), f"Should NOT detect as cloud: {path}"
+
+
+def test_should_use_polling_respects_env_true(monkeypatch):
+    """Test that OBSIDIAN_WATCH_USE_POLLING=true forces polling."""
+    monkeypatch.setenv("OBSIDIAN_WATCH_USE_POLLING", "true")
+    assert should_use_polling("/local/path") is True
+
+
+def test_should_use_polling_respects_env_false(monkeypatch):
+    """Test that OBSIDIAN_WATCH_USE_POLLING=false disables polling."""
+    monkeypatch.setenv("OBSIDIAN_WATCH_USE_POLLING", "false")
+    # Even for cloud paths, env var should override
+    assert should_use_polling("/Users/drew/Library/Mobile Documents/vault") is False
+
+
+def test_should_use_polling_auto_detects_cloud_path(monkeypatch):
+    """Test that polling is auto-enabled for cloud-synced paths."""
+    monkeypatch.delenv("OBSIDIAN_WATCH_USE_POLLING", raising=False)
+    # Mock is_running_in_docker to return False
+    import src.file_watcher as fw
+
+    original_func = fw.is_running_in_docker
+    fw.is_running_in_docker = lambda: False
+    try:
+        assert should_use_polling("/Users/drew/Library/Mobile Documents/vault") is True
+        assert should_use_polling("/Users/drew/Library/CloudStorage/GoogleDrive-x/vault") is True
+    finally:
+        fw.is_running_in_docker = original_func
+
+
+@pytest.mark.asyncio
+async def test_vault_watcher_uses_polling_observer_when_configured(
+    tmp_vault, mock_store, mock_embedder, monkeypatch
+):
+    """Test that VaultWatcher uses PollingObserver when polling is enabled."""
+    monkeypatch.setenv("OBSIDIAN_WATCH_USE_POLLING", "true")
+
+    vault_watcher = VaultWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        debounce_seconds=1,
+    )
+
+    assert vault_watcher.use_polling is True
+
+    # Start the watcher
+    loop = asyncio.get_running_loop()
+    vault_watcher.start(loop)
+
+    try:
+        # Should be using PollingObserver
+        assert isinstance(vault_watcher.observer, PollingObserver)
+    finally:
+        vault_watcher.stop()
+
+
+@pytest.mark.asyncio
+async def test_vault_watcher_uses_native_observer_when_not_polling(
+    tmp_vault, mock_store, mock_embedder, monkeypatch
+):
+    """Test that VaultWatcher uses native Observer when polling is disabled."""
+    monkeypatch.setenv("OBSIDIAN_WATCH_USE_POLLING", "false")
+
+    vault_watcher = VaultWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        debounce_seconds=1,
+    )
+
+    assert vault_watcher.use_polling is False
+
+    # Start the watcher
+    loop = asyncio.get_running_loop()
+    vault_watcher.start(loop)
+
+    try:
+        # Should be using native Observer (not PollingObserver)
+        assert not isinstance(vault_watcher.observer, PollingObserver)
+    finally:
+        vault_watcher.stop()
+
+
+def test_vault_watcher_polling_interval_from_env(tmp_vault, mock_store, mock_embedder, monkeypatch):
+    """Test that polling interval is read from environment variable."""
+    monkeypatch.setenv("OBSIDIAN_WATCH_POLLING_INTERVAL", "60")
+
+    vault_watcher = VaultWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        debounce_seconds=1,
+    )
+
+    assert vault_watcher.polling_interval == 60
+
+
+def test_vault_watcher_polling_interval_from_param(tmp_vault, mock_store, mock_embedder):
+    """Test that polling interval parameter overrides environment variable."""
+    vault_watcher = VaultWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        debounce_seconds=1,
+        polling_interval=45,
+    )
+
+    assert vault_watcher.polling_interval == 45

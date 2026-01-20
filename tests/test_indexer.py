@@ -132,7 +132,6 @@ async def test_index_vault_processes_batches(tmp_vault, mock_store, mock_embedde
         patch("src.indexer.VoyageEmbedder", return_value=mock_embedder),
         patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store),
     ):
-
         # Run indexing with small batch size
         await index_vault(str(tmp_vault), batch_size=2)
 
@@ -156,7 +155,6 @@ async def test_index_vault_skips_empty_files(tmp_path, mock_store, mock_embedder
         patch("src.indexer.VoyageEmbedder", return_value=mock_embedder),
         patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store),
     ):
-
         await index_vault(str(vault), batch_size=10)
 
         # Check upsert_batch was called with only valid notes
@@ -194,7 +192,6 @@ async def test_index_vault_handles_large_notes_with_chunking(tmp_path, mock_stor
         patch("src.indexer.VoyageEmbedder", return_value=mock_embedder),
         patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store),
     ):
-
         await index_vault(str(vault), batch_size=10)
 
         # Should have called upsert_batch

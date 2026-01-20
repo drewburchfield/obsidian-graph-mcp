@@ -52,7 +52,7 @@ def scan_vault(vault_path: str, exclusion_filter: ExclusionFilter | None = None)
         md_files.append(file_path)
 
     logger.info(
-        f"Found {len(md_files)} markdown files in vault " f"({excluded_count} excluded by filters)"
+        f"Found {len(md_files)} markdown files in vault ({excluded_count} excluded by filters)"
     )
     return md_files
 

@@ -123,7 +123,7 @@ async def tmp_vault(tmp_path):
     folder.mkdir()
 
     (folder / "note3.md").write_text(
-        "# Nested Note\n\n" "This note is in a subfolder to test path handling."
+        "# Nested Note\n\nThis note is in a subfolder to test path handling."
     )
 
     # Create empty file for edge case testing

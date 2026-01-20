@@ -2,6 +2,8 @@
 File watching and incremental re-indexing for Obsidian vault.
 
 Monitors markdown files for changes and triggers debounced re-indexing.
+Supports both native filesystem events (FSEvents/inotify) and polling mode
+for cloud-synced vaults (iCloud, Google Drive, Dropbox, OneDrive).
 """
 
 import asyncio
@@ -14,11 +16,95 @@ from pathlib import Path
 from loguru import logger
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver
 
 from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
 from .exclusion import cleanup_excluded_notes, load_exclusion_filter
 from .vector_store import Note, PostgreSQLVectorStore
+
+# Cloud storage path patterns (macOS)
+CLOUD_SYNC_PATTERNS = [
+    "/Library/Mobile Documents/",  # iCloud Drive
+    "/Library/CloudStorage/GoogleDrive",  # Google Drive
+    "/Library/CloudStorage/Dropbox",  # Dropbox
+    "/Library/CloudStorage/OneDrive",  # OneDrive
+    "/Dropbox/",  # Legacy Dropbox location
+]
+
+
+def is_cloud_synced_path(path: str) -> bool:
+    """
+    Check if a path is within a cloud-synced folder.
+
+    Args:
+        path: Absolute path to check
+
+    Returns:
+        True if path appears to be in a cloud-synced folder
+    """
+    path_str = str(path)
+    for pattern in CLOUD_SYNC_PATTERNS:
+        if pattern in path_str:
+            return True
+    return False
+
+
+def is_running_in_docker() -> bool:
+    """
+    Detect if we're running inside a Docker container.
+
+    Returns:
+        True if running in Docker
+    """
+    # Check for .dockerenv file
+    if Path("/.dockerenv").exists():
+        return True
+
+    # Check cgroup (Linux containers)
+    try:
+        with open("/proc/1/cgroup", encoding="utf-8") as f:
+            return "docker" in f.read()
+    except (FileNotFoundError, PermissionError):
+        pass
+
+    return False
+
+
+def should_use_polling(vault_path: str) -> bool:
+    """
+    Determine if polling mode should be used for file watching.
+
+    Decision logic:
+    1. If OBSIDIAN_WATCH_USE_POLLING env var is set, use that
+    2. If running in Docker, default to polling (filesystem events unreliable)
+    3. If vault is on cloud-synced path, default to polling
+    4. Otherwise use native filesystem events
+
+    Args:
+        vault_path: Path to the Obsidian vault
+
+    Returns:
+        True if polling should be used
+    """
+    # Check explicit override
+    env_polling = os.getenv("OBSIDIAN_WATCH_USE_POLLING", "").lower()
+    if env_polling == "true":
+        return True
+    if env_polling == "false":
+        return False
+
+    # Auto-detect: Docker -> polling
+    if is_running_in_docker():
+        logger.info("Docker detected - using polling mode for reliable file watching")
+        return True
+
+    # Auto-detect: Cloud sync path -> polling
+    if is_cloud_synced_path(vault_path):
+        logger.info("Cloud-synced vault detected - using polling mode for reliable file watching")
+        return True
+
+    return False
 
 
 class ObsidianFileWatcher(FileSystemEventHandler):
@@ -111,6 +197,40 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             logger.error(f"File reindex task failed: {e}", exc_info=True)
             # File will be retried on next modification or startup scan
 
+    def _handle_delete_future_error(self, future: asyncio.Future):
+        """
+        Error callback for threadsafe delete futures.
+
+        Logs errors from file deletion operations without crashing the watcher.
+        Orphaned entries will be cleaned up on next startup scan.
+
+        Args:
+            future: Completed Future to check for errors
+        """
+        try:
+            future.result()  # Raises if coroutine failed
+        except Exception as e:
+            logger.error(f"File delete task failed: {e}", exc_info=True)
+            # Orphaned entry will be cleaned up on next startup scan
+
+    async def _delete_from_db(self, file_path: str):
+        """
+        Delete a file's entries from the database.
+
+        Args:
+            file_path: Absolute path to the deleted file
+        """
+        try:
+            rel_path = str(Path(file_path).relative_to(self.vault_path))
+            deleted = await self.store.delete_notes_by_paths([rel_path])
+            if deleted:
+                logger.info(f"Deleted from DB: {rel_path}")
+        except ValueError:
+            # File was outside vault, nothing to delete
+            pass
+        except Exception as e:
+            logger.error(f"Failed to delete {file_path} from DB: {e}")
+
     def on_modified(self, event):
         """Handle file modification events."""
         if event.is_directory:
@@ -152,6 +272,44 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         self.pending_changes[file_path] = time.time()
         future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(file_path), self.loop)
         future.add_done_callback(self._handle_reindex_future_error)
+
+    def on_deleted(self, event):
+        """Handle file deletion events."""
+        if event.is_directory:
+            return
+
+        if not event.src_path.endswith(".md"):
+            return
+
+        file_path = event.src_path
+        logger.debug(f"File deleted: {file_path}")
+
+        # Schedule async deletion from database
+        future = asyncio.run_coroutine_threadsafe(self._delete_from_db(file_path), self.loop)
+        future.add_done_callback(self._handle_delete_future_error)
+
+    def on_moved(self, event):
+        """Handle file move/rename events."""
+        if event.is_directory:
+            return
+
+        if not event.src_path.endswith(".md"):
+            return
+
+        old_path = event.src_path
+        new_path = event.dest_path
+
+        logger.debug(f"File moved: {old_path} -> {new_path}")
+
+        # Delete old path from DB
+        future = asyncio.run_coroutine_threadsafe(self._delete_from_db(old_path), self.loop)
+        future.add_done_callback(self._handle_delete_future_error)
+
+        # Index new path (if not excluded and is .md)
+        if new_path.endswith(".md") and not self._is_excluded(new_path):
+            self.pending_changes[new_path] = time.time()
+            future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(new_path), self.loop)
+            future.add_done_callback(self._handle_reindex_future_error)
 
     async def _get_lock_for_file(self, file_path: str) -> asyncio.Lock:
         """
@@ -304,6 +462,14 @@ class VaultWatcher:
 
     Starts watchdog observer and handles lifecycle.
     Includes startup scan to catch files changed while offline.
+
+    Supports two watching modes:
+    - Native (FSEvents/inotify): Fast, low CPU, but unreliable with Docker + cloud sync
+    - Polling: Reliable everywhere, slightly higher CPU, configurable interval
+
+    Polling mode is automatically enabled when:
+    - Running inside Docker (filesystem events don't propagate reliably)
+    - Vault is on a cloud-synced path (iCloud, Google Drive, Dropbox, OneDrive)
     """
 
     def __init__(
@@ -312,6 +478,7 @@ class VaultWatcher:
         store: PostgreSQLVectorStore,
         embedder: VoyageEmbedder,
         debounce_seconds: int = 30,
+        polling_interval: int | None = None,
     ):
         """
         Initialize vault watcher.
@@ -320,15 +487,23 @@ class VaultWatcher:
             vault_path: Path to Obsidian vault
             store: PostgreSQL vector store
             embedder: Voyage embedder
-            debounce_seconds: Debounce delay
+            debounce_seconds: Debounce delay for re-indexing
+            polling_interval: Polling interval in seconds (None = use env or default 30s)
         """
         self.vault_path = vault_path
         self.store = store
         self.embedder = embedder
         self.debounce_seconds = debounce_seconds
 
+        # Polling interval: param > env var > default 30s
+        if polling_interval is not None:
+            self.polling_interval = polling_interval
+        else:
+            self.polling_interval = int(os.getenv("OBSIDIAN_WATCH_POLLING_INTERVAL", "30"))
+
         self.observer = None
         self.event_handler = None
+        self.use_polling = should_use_polling(vault_path)
 
     async def startup_scan(self):
         """
@@ -347,6 +522,13 @@ class VaultWatcher:
             await cleanup_excluded_notes(self.store, self.vault_path)
 
             vault = Path(self.vault_path)
+
+            # Clean up orphan paths (files that no longer exist)
+            db_paths = await self.store.get_all_paths()
+            orphan_paths = [p for p in db_paths if not (vault / p).exists()]
+            if orphan_paths:
+                deleted = await self.store.delete_notes_by_paths(orphan_paths)
+                logger.info(f"Startup scan: Removed {deleted} orphan notes from DB")
 
             # Load exclusion filter
             exclusion_filter = load_exclusion_filter(self.vault_path)
@@ -422,11 +604,18 @@ class VaultWatcher:
             self.vault_path, self.store, self.embedder, loop, self.debounce_seconds
         )
 
-        self.observer = Observer()
+        # Choose observer based on environment
+        if self.use_polling:
+            self.observer = PollingObserver(timeout=self.polling_interval)
+            watch_mode = f"polling (interval: {self.polling_interval}s)"
+        else:
+            self.observer = Observer()
+            watch_mode = "native filesystem events"
+
         self.observer.schedule(self.event_handler, self.vault_path, recursive=True)
         self.observer.start()
 
-        logger.success(f"Watching vault: {self.vault_path}")
+        logger.success(f"Watching vault: {self.vault_path} [{watch_mode}]")
 
     def stop(self):
         """Stop watching the vault."""
