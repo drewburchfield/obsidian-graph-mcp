@@ -280,3 +280,75 @@ async def test_cleanup_lock_removes_unused_locks(tmp_vault, mock_store, mock_emb
     # Cleanup should NOT remove lock (pending change exists)
     await watcher._cleanup_lock(file_path)
     assert len(watcher._reindex_locks) == 1
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_ignores_excluded_paths(tmp_path, mock_store, mock_embedder):
+    """Test that file watcher skips excluded paths."""
+    vault = tmp_path / "vault"
+    vault.mkdir()
+
+    # Create config to exclude trash/
+    (vault / ".obsidian-graph.conf").write_text("trash/\n")
+
+    # Create excluded and non-excluded files
+    trash = vault / "trash"
+    trash.mkdir()
+    (trash / "deleted.md").write_text("# Deleted")
+    (vault / "normal.md").write_text("# Normal")
+
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    class MockEvent:
+        def __init__(self, src_path):
+            self.src_path = src_path
+            self.is_directory = False
+
+    # Simulate event for excluded file
+    watcher.on_modified(MockEvent(str(trash / "deleted.md")))
+    # Should not add to pending changes
+    assert str(trash / "deleted.md") not in watcher.pending_changes
+
+    # Simulate event for non-excluded file
+    watcher.on_modified(MockEvent(str(vault / "normal.md")))
+    # Should add to pending changes
+    assert str(vault / "normal.md") in watcher.pending_changes
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_excludes_default_patterns(tmp_path, mock_store, mock_embedder):
+    """Test that default exclusions (.obsidian, .git) work."""
+    vault = tmp_path / "vault"
+    vault.mkdir()
+
+    # Create .obsidian folder (default exclusion)
+    obsidian = vault / ".obsidian"
+    obsidian.mkdir()
+    (obsidian / "plugins.md").write_text("plugins")
+
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    class MockEvent:
+        def __init__(self, src_path):
+            self.src_path = src_path
+            self.is_directory = False
+
+    # Simulate event for .obsidian file
+    watcher.on_modified(MockEvent(str(obsidian / "plugins.md")))
+
+    # Should not add to pending changes (default exclusion)
+    assert str(obsidian / "plugins.md") not in watcher.pending_changes

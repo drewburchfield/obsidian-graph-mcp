@@ -1,0 +1,54 @@
+# Obsidian Graph MCP - Exclusion Patterns
+# ========================================
+#
+# This file controls which folders/files are excluded from indexing.
+# Copy to your vault as: .obsidian-graph.conf
+#
+# How it works:
+# - Lines starting with # are comments (ignored)
+# - Blank lines are ignored
+# - Each line is a pattern to exclude
+# - Patterns are matched against paths relative to vault root
+#
+# Pattern types:
+# - Folder path:  07_Archive/Trash/     (excludes folder and all contents)
+# - Glob pattern: drafts/*              (excludes all files in drafts/)
+# - File pattern: *.tmp.md              (excludes all .tmp.md files)
+#
+# === DEFAULTS (always excluded, no need to add) ===
+# .obsidian/      - Obsidian app config
+# .trash/         - Obsidian trash
+# .Trash/         - macOS trash
+# .git/           - Git version control
+# .github/        - GitHub workflows
+# .vscode/        - VS Code settings
+# .cursor/        - Cursor AI editor
+# .claude/        - Claude Code sessions
+# .aider/         - Aider AI config
+# .smart-env/     - Smart Connections plugin
+#
+# === COMMON EXCLUSIONS (uncomment what you need) ===
+#
+# Claude Code project instructions (root-level file)
+# CLAUDE.md
+#
+# Soft delete / trash folder
+# 07_Archive/Trash/
+#
+# Work in progress
+# drafts/
+# _drafts/
+#
+# Templates (if you don't want them searchable)
+# templates/
+# _templates/
+#
+# Daily notes (if too noisy in search results)
+# 00_Inbox/Daily/
+#
+# Attachments folder (usually non-markdown anyway)
+# attachments/
+# 08_Attachments/
+#
+# === ADD YOUR CUSTOM EXCLUSIONS BELOW ===
+
