@@ -396,9 +396,7 @@ class PostgreSQLVectorStore:
 
         try:
             async with self.pool.acquire() as conn:
-                result = await conn.execute(
-                    "DELETE FROM notes WHERE path = ANY($1)", paths
-                )
+                result = await conn.execute("DELETE FROM notes WHERE path = ANY($1)", paths)
                 # Result format: "DELETE N"
                 count = int(result.split()[-1])
                 return count

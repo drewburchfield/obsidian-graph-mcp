@@ -150,9 +150,7 @@ async def cleanup_excluded_notes(store, vault_path: str) -> int:
         return 0
 
     # Find paths that should be excluded
-    paths_to_delete = [
-        path for path in all_paths if exclusion_filter.should_exclude(path)
-    ]
+    paths_to_delete = [path for path in all_paths if exclusion_filter.should_exclude(path)]
 
     if not paths_to_delete:
         logger.debug("No excluded paths found in database")
