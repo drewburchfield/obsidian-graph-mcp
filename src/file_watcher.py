@@ -289,24 +289,37 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         future.add_done_callback(self._handle_delete_future_error)
 
     def on_moved(self, event):
-        """Handle file move/rename events."""
-        if event.is_directory:
-            return
+        """
+        Handle file move/rename events.
 
-        if not event.src_path.endswith(".md"):
+        Handles all move scenarios:
+        - .md -> .md (same vault): delete old, index new
+        - .md -> .md (to excluded): delete old only
+        - .md -> .txt: delete old only
+        - .txt -> .md: index new only
+        - .txt -> .txt: ignore
+        """
+        if event.is_directory:
             return
 
         old_path = event.src_path
         new_path = event.dest_path
+        old_is_md = old_path.endswith(".md")
+        new_is_md = new_path.endswith(".md")
+
+        # Skip if neither source nor destination is markdown
+        if not old_is_md and not new_is_md:
+            return
 
         logger.debug(f"File moved: {old_path} -> {new_path}")
 
-        # Delete old path from DB
-        future = asyncio.run_coroutine_threadsafe(self._delete_from_db(old_path), self.loop)
-        future.add_done_callback(self._handle_delete_future_error)
+        # Delete old path from DB if it was a markdown file
+        if old_is_md:
+            future = asyncio.run_coroutine_threadsafe(self._delete_from_db(old_path), self.loop)
+            future.add_done_callback(self._handle_delete_future_error)
 
-        # Index new path (if not excluded and is .md)
-        if new_path.endswith(".md") and not self._is_excluded(new_path):
+        # Index new path if it's markdown and not excluded
+        if new_is_md and not self._is_excluded(new_path):
             self.pending_changes[new_path] = time.time()
             future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(new_path), self.loop)
             future.add_done_callback(self._handle_reindex_future_error)
@@ -524,6 +537,12 @@ class VaultWatcher:
             vault = Path(self.vault_path)
 
             # Clean up orphan paths (files that no longer exist)
+            # Note: There's a small TOCTOU window between get_all_paths() and exists() check.
+            # This is acceptable because:
+            # 1. Startup scan runs BEFORE file watcher starts, so no concurrent creates
+            # 2. Any file created during this brief window would be caught by the
+            #    subsequent stale file scan (which checks mtime vs last_indexed_at)
+            # 3. The race window is microseconds, making collision extremely unlikely
             db_paths = await self.store.get_all_paths()
             orphan_paths = [p for p in db_paths if not (vault / p).exists()]
             if orphan_paths:

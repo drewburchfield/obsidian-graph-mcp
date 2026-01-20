@@ -517,6 +517,82 @@ async def test_file_watcher_handles_move_to_excluded(tmp_path, mock_store, mock_
 
 
 @pytest.mark.asyncio
+async def test_file_watcher_handles_rename_txt_to_md(tmp_vault, mock_store, mock_embedder):
+    """Test that renaming a .txt file to .md indexes the new file."""
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=0.1,
+    )
+
+    # Source is .txt, destination is .md
+    old_file = tmp_vault / "draft.txt"
+    new_file = tmp_vault / "draft.md"
+    new_file.write_text("# Now a markdown file")
+
+    class MockMoveEvent:
+        def __init__(self, src_path, dest_path, is_directory=False):
+            self.src_path = src_path
+            self.dest_path = dest_path
+            self.is_directory = is_directory
+
+    # Simulate rename from .txt to .md
+    event = MockMoveEvent(str(old_file), str(new_file))
+    watcher.on_moved(event)
+
+    # Wait for async operations
+    await asyncio.sleep(0.1)
+
+    # Should NOT delete old path (it wasn't .md)
+    mock_store.delete_notes_by_paths.assert_not_called()
+
+    # Should add new path to pending for indexing
+    assert str(new_file) in watcher.pending_changes
+
+
+@pytest.mark.asyncio
+async def test_file_watcher_handles_rename_md_to_txt(tmp_vault, mock_store, mock_embedder):
+    """Test that renaming a .md file to .txt deletes from DB but doesn't re-index."""
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    # Source is .md, destination is .txt
+    old_file = tmp_vault / "note.md"
+    old_file.write_text("# Was a markdown file")
+    new_file = tmp_vault / "note.txt"
+
+    class MockMoveEvent:
+        def __init__(self, src_path, dest_path, is_directory=False):
+            self.src_path = src_path
+            self.dest_path = dest_path
+            self.is_directory = is_directory
+
+    # Simulate rename from .md to .txt
+    event = MockMoveEvent(str(old_file), str(new_file))
+    watcher.on_moved(event)
+
+    # Wait for async operations
+    await asyncio.sleep(0.1)
+
+    # Should delete old path from DB
+    mock_store.delete_notes_by_paths.assert_called_once()
+    delete_args = mock_store.delete_notes_by_paths.call_args[0][0]
+    assert "note.md" in delete_args
+
+    # Should NOT add new path to pending (it's not .md)
+    assert str(new_file) not in watcher.pending_changes
+
+
+@pytest.mark.asyncio
 async def test_startup_scan_cleans_orphans(tmp_vault, mock_store, mock_embedder):
     """Test that startup scan removes orphan paths from database."""
     # Create vault watcher
