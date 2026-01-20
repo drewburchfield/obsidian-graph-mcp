@@ -125,9 +125,9 @@ class TestServerInitialization:
                 # All should return initialization error
                 assert len(result) == 1
                 assert result[0]["type"] == "text"
-                assert "Server not initialized" in result[0]["text"], (
-                    f"{tool_name} should handle uninitialized server"
-                )
+                assert (
+                    "Server not initialized" in result[0]["text"]
+                ), f"{tool_name} should handle uninitialized server"
 
         finally:
             # Restore context

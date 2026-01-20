@@ -127,9 +127,9 @@ async def test_search_notes_similarity_range(setup_test_data):
     results = await store.search(query_embedding, limit=10, threshold=0.0)
 
     for result in results:
-        assert 0.0 <= result.similarity <= 1.0, (
-            f"Similarity {result.similarity} out of range [0.0, 1.0]"
-        )
+        assert (
+            0.0 <= result.similarity <= 1.0
+        ), f"Similarity {result.similarity} out of range [0.0, 1.0]"
 
 
 @pytest.mark.asyncio
@@ -155,9 +155,9 @@ async def test_search_notes_threshold(setup_test_data):
     results = await store.search(query_embedding, limit=10, threshold=0.2)
 
     for result in results:
-        assert result.similarity >= 0.2, (
-            f"Result {result.title} has similarity {result.similarity} < threshold 0.2"
-        )
+        assert (
+            result.similarity >= 0.2
+        ), f"Result {result.title} has similarity {result.similarity} < threshold 0.2"
 
 
 @pytest.mark.asyncio
@@ -180,9 +180,9 @@ async def test_get_similar_notes_finds_related(setup_test_data):
 
     # Should find neural networks and deep learning (semantically related)
     paths = [r.path for r in results]
-    assert any("neural" in path.lower() or "deep" in path.lower() for path in paths), (
-        "Should find semantically related ML notes"
-    )
+    assert any(
+        "neural" in path.lower() or "deep" in path.lower() for path in paths
+    ), "Should find semantically related ML notes"
 
 
 @pytest.mark.asyncio
@@ -248,9 +248,9 @@ async def test_connection_graph_edge_similarity(setup_test_data):
     graph = await graph_builder.build_connection_graph("ml/machine-learning.md", depth=2)
 
     for edge in graph["edges"]:
-        assert 0.0 <= edge["similarity"] <= 1.0, (
-            f"Edge similarity {edge['similarity']} out of range"
-        )
+        assert (
+            0.0 <= edge["similarity"] <= 1.0
+        ), f"Edge similarity {edge['similarity']} out of range"
 
 
 @pytest.mark.asyncio

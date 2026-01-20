@@ -229,7 +229,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             # File was outside vault, nothing to delete
             pass
         except Exception as e:
-            logger.error(f"Failed to delete {file_path} from DB: {e}")
+            logger.error(f"Failed to delete {file_path} from DB: {e}")  # nosec B608
 
     def on_modified(self, event):
         """Handle file modification events."""
@@ -293,10 +293,11 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         Handle file move/rename events.
 
         Handles all move scenarios:
-        - .md -> .md (same vault): delete old, index new
-        - .md -> .md (to excluded): delete old only
+        - .md -> .md (within vault, not excluded): delete old, index new
+        - .md -> .md (to excluded folder): delete old only
+        - .md -> .md (moved outside vault): delete old only
         - .md -> .txt: delete old only
-        - .txt -> .md: index new only
+        - .txt -> .md (within vault): index new only
         - .txt -> .txt: ignore
         """
         if event.is_directory:
@@ -318,8 +319,15 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             future = asyncio.run_coroutine_threadsafe(self._delete_from_db(old_path), self.loop)
             future.add_done_callback(self._handle_delete_future_error)
 
-        # Index new path if it's markdown and not excluded
-        if new_is_md and not self._is_excluded(new_path):
+        # Index new path if it's markdown, within vault, and not excluded
+        # Check vault boundary to avoid indexing files moved outside vault
+        try:
+            Path(new_path).relative_to(self.vault_path)
+            in_vault = True
+        except ValueError:
+            in_vault = False
+
+        if new_is_md and in_vault and not self._is_excluded(new_path):
             self.pending_changes[new_path] = time.time()
             future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(new_path), self.loop)
             future.add_done_callback(self._handle_reindex_future_error)

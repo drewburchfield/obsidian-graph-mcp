@@ -187,7 +187,7 @@ OBSIDIAN_WATCH_ENABLED=true
 OBSIDIAN_DEBOUNCE_SECONDS=30
 
 # Polling mode (auto-enabled for Docker and cloud-synced vaults)
-# OBSIDIAN_WATCH_USE_POLLING=       # auto | true | false (default: auto)
+# OBSIDIAN_WATCH_USE_POLLING=       # true | false (unset = auto-detect)
 # OBSIDIAN_WATCH_POLLING_INTERVAL=30  # seconds between polls (default: 30)
 
 # Performance

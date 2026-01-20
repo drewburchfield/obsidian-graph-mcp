@@ -84,9 +84,9 @@ async def test_file_watcher_concurrent_debounce_race(tmp_path):
     # Assert: Should have exactly 1 re-index, not 10
     # This will FAIL without proper locking (race condition exists)
     # This will PASS after fix is applied
-    assert reindex_count == 1, (
-        f"Expected 1 re-index for same file, got {reindex_count} (RACE CONDITION!)"
-    )
+    assert (
+        reindex_count == 1
+    ), f"Expected 1 re-index for same file, got {reindex_count} (RACE CONDITION!)"
 
 
 @pytest.mark.asyncio
@@ -317,6 +317,6 @@ async def test_file_watcher_stress_many_files(tmp_path):
     # Due to timing variations, some files may not complete their debounce cycles.
     # We verify that we got a reasonable number (at least 80% of files).
     assert reindex_count >= 40, f"Expected at least 40 re-indexes, got {reindex_count}"
-    assert reindex_count <= 50, (
-        f"Expected at most 50 re-indexes (one per file), got {reindex_count}"
-    )
+    assert (
+        reindex_count <= 50
+    ), f"Expected at most 50 re-indexes (one per file), got {reindex_count}"

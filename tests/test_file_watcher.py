@@ -172,9 +172,9 @@ async def test_lock_cleanup_prevents_memory_leak(tmp_vault, mock_store, mock_emb
     await asyncio.sleep(0.2)
 
     # Lock dict should be small (most locks cleaned up)
-    assert len(watcher._reindex_locks) < 10, (
-        f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
-    )
+    assert (
+        len(watcher._reindex_locks) < 10
+    ), f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
 
 
 @pytest.mark.asyncio
@@ -214,9 +214,9 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
 
     # Should have detected stale files (note1.md, note2.md, folder/note3.md)
     # Empty.md might be skipped
-    assert vault_watcher.event_handler._reindex_file.call_count >= 3, (
-        "Expected at least 3 stale files detected"
-    )
+    assert (
+        vault_watcher.event_handler._reindex_file.call_count >= 3
+    ), "Expected at least 3 stale files detected"
 
 
 @pytest.mark.asyncio

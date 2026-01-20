@@ -99,9 +99,9 @@ def test_password_minimum_entropy():
 
     # Should have at least 2 of the 3 types for good entropy
     char_type_count = sum([has_lower, has_upper, has_digit])
-    assert char_type_count >= 2, (
-        f"Password lacks character diversity (has_lower={has_lower}, has_upper={has_upper}, has_digit={has_digit})"
-    )
+    assert (
+        char_type_count >= 2
+    ), f"Password lacks character diversity (has_lower={has_lower}, has_upper={has_upper}, has_digit={has_digit})"
 
 
 def test_password_not_in_common_weak_list():
@@ -146,9 +146,9 @@ def test_gitignore_includes_sensitive_files():
     assert ".env" in content, ".gitignore should include .env files"
 
     # Check for .env.instance files (alternative naming convention)
-    assert ".env.instance" in content or ".env.local" in content, (
-        ".gitignore should include .env.instance or .env.local files"
-    )
+    assert (
+        ".env.instance" in content or ".env.local" in content
+    ), ".gitignore should include .env.instance or .env.local files"
 
 
 @pytest.mark.skip(
@@ -163,9 +163,9 @@ def test_password_generation_script_exists():
 
     # Check if executable (on Unix-like systems)
     if hasattr(os, "access"):
-        assert os.access(script_path, os.X_OK), (
-            f"Password generation script is not executable: {script_path}"
-        )
+        assert os.access(
+            script_path, os.X_OK
+        ), f"Password generation script is not executable: {script_path}"
 
 
 @pytest.mark.skip(
@@ -189,9 +189,9 @@ def test_password_generation_script_syntax():
 
     assert "tr -dc" in content, "Script should use tr for character filtering"
 
-    assert "docker-compose.override.yml" in content, (
-        "Script should create docker-compose.override.yml"
-    )
+    assert (
+        "docker-compose.override.yml" in content
+    ), "Script should create docker-compose.override.yml"
 
 
 @pytest.mark.skip(reason="Standalone repo uses .env file instead of docker-compose.override.yml")
@@ -207,11 +207,11 @@ def test_docker_compose_override_pattern():
         content = f.read()
 
     # Should reference environment variable, not hardcode password
-    assert "${POSTGRES_PASSWORD}" in content or "$POSTGRES_PASSWORD" in content, (
-        "docker-compose.override.yml should reference POSTGRES_PASSWORD environment variable"
-    )
+    assert (
+        "${POSTGRES_PASSWORD}" in content or "$POSTGRES_PASSWORD" in content
+    ), "docker-compose.override.yml should reference POSTGRES_PASSWORD environment variable"
 
     # Should target the correct service
-    assert "mcp-obsidian-graph-pgvector" in content, (
-        "docker-compose.override.yml should override mcp-obsidian-graph-pgvector service"
-    )
+    assert (
+        "mcp-obsidian-graph-pgvector" in content
+    ), "docker-compose.override.yml should override mcp-obsidian-graph-pgvector service"
