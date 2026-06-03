@@ -30,6 +30,9 @@ EMBEDDING_DIMENSIONS = 1024
 # Qwen3 has 32K context, so chunking is rarely needed; keep a generous threshold.
 WHOLE_EMBED_TOKEN_THRESHOLD = 6000
 
+INF = float("inf")
+NEG_INF = float("-inf")
+
 # Qwen3-Embedding query instruction (documents are embedded without one).
 QUERY_INSTRUCTION = (
     "Instruct: Given a search query, retrieve relevant documents from a personal "
@@ -40,6 +43,11 @@ QUERY_INSTRUCTION = (
 def _l2_normalize(vec: list[float]) -> list[float]:
     norm = math.sqrt(sum(v * v for v in vec))
     return vec if norm == 0.0 else [v / norm for v in vec]
+
+
+def _is_bad_vec(vec) -> bool:
+    """True if a vector is missing or contains NaN/inf (pgvector rejects those)."""
+    return vec is None or any(v != v or v in (INF, NEG_INF) for v in vec)
 
 
 class OllamaEmbedder:
@@ -53,7 +61,7 @@ class OllamaEmbedder:
         batch_size: int = 32,
         concurrency: int = 2,
         api_timeout: float = 120.0,
-        max_retries: int = 3,
+        max_retries: int = 6,
         dimensions: int = EMBEDDING_DIMENSIONS,
     ):
         self.model = model
@@ -135,8 +143,11 @@ class OllamaEmbedder:
                     return [_l2_normalize([float(v) for v in e]) for e in raw]
                 last_error = EmbeddingError(f"Ollama HTTP {resp.status_code}: {resp.text[:160]}")
             except (httpx.TimeoutException, httpx.TransportError) as e:
+                # Connection refused usually means a remote server (e.g. bigbot)
+                # crashed and launchd is reloading the model (~6-10s). Back off
+                # long enough to bridge a restart rather than failing the doc.
                 last_error = e
-                await asyncio.sleep(attempt + 1)
+                await asyncio.sleep(min(15, 5 * (attempt + 1)))
         raise EmbeddingError(
             f"Ollama embed failed after {self.max_retries} attempts: {last_error}",
             text_preview=inputs[0][:100] if inputs else "",
@@ -164,7 +175,11 @@ class OllamaEmbedder:
                 cached = self.cache_index.get(self._get_text_hash(text))
                 if cached and Path(cached).exists():
                     with open(cached) as f:
-                        results[i] = json.load(f)
+                        v = json.load(f)
+                    # Skip a known-bad cached vector; re-fetching the same input
+                    # would just reproduce the NaN, so leave this doc unembedded.
+                    if not _is_bad_vec(v):
+                        results[i] = v
                     continue
             to_fetch.append(i)
 
@@ -185,6 +200,12 @@ class OllamaEmbedder:
             for fut in asyncio.as_completed([run_group(g) for g in groups]):
                 indices, vectors = await fut
                 for i, vec in zip(indices, vectors, strict=True):
+                    # Quantized models can occasionally emit NaN/inf for an input.
+                    # pgvector rejects those, so drop the single bad vector (the
+                    # doc is skipped gracefully) rather than poisoning the batch.
+                    if _is_bad_vec(vec):
+                        logger.warning(f"Dropping NaN/inf embedding for index {i}")
+                        continue
                     results[i] = vec
                     if use_cache:
                         text_hash = self._get_text_hash(texts[i])
