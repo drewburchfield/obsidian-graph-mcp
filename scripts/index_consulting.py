@@ -27,9 +27,27 @@ from loguru import logger
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from src.gemini_embedder import GeminiEmbedder  # noqa: E402
 from src.multi_format_indexer import index_root  # noqa: E402
 from src.vector_store import PostgreSQLVectorStore  # noqa: E402
+
+
+def make_embedder(cache_dir: str):
+    """Local Ollama (default, free, no quota) or hosted Gemini via env flag."""
+    provider = os.getenv("EMBEDDING_PROVIDER", "ollama").lower()
+    if provider == "gemini":
+        from src.gemini_embedder import GeminiEmbedder
+
+        return GeminiEmbedder(
+            cache_dir=cache_dir,
+            batch_size=int(os.getenv("EMBEDDING_BATCH_SIZE", "5")),
+            concurrency=int(os.getenv("EMBEDDING_CONCURRENCY", "1")),
+        )
+    from src.ollama_embedder import OllamaEmbedder
+
+    return OllamaEmbedder(
+        model=os.getenv("OLLAMA_EMBED_MODEL", "qwen3-embedding:0.6b"),
+        cache_dir=cache_dir,
+    )
 
 DEFAULT_ROOT = "/Users/drewburchfield/dev/consulting"
 
@@ -46,20 +64,15 @@ async def main() -> int:
     parser.add_argument("--db", default=os.getenv("CONSULTING_PG_DB", "consulting_graph"))
     args = parser.parse_args()
 
-    if not (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")):
-        logger.error("GEMINI_API_KEY is not set. Add it to .env and re-run.")
+    provider = os.getenv("EMBEDDING_PROVIDER", "ollama").lower()
+    if provider == "gemini" and not (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")):
+        logger.error("EMBEDDING_PROVIDER=gemini but GEMINI_API_KEY is not set.")
         return 1
     if not os.getenv("POSTGRES_PASSWORD"):
         logger.error("POSTGRES_PASSWORD is not set (shared with the pgvector container).")
         return 1
 
-    # Free-tier safe: small per-request token footprint, sequential, patient on
-    # 429s (the limit is per-minute). Override via env for paid tier (faster).
-    embedder = GeminiEmbedder(
-        cache_dir=str(REPO_ROOT / "data" / "consulting_cache"),
-        batch_size=int(os.getenv("EMBEDDING_BATCH_SIZE", "5")),
-        concurrency=int(os.getenv("EMBEDDING_CONCURRENCY", "1")),
-    )
+    embedder = make_embedder(str(REPO_ROOT / "data" / "consulting_cache"))
     store = PostgreSQLVectorStore(
         host=args.host,
         port=args.port,
