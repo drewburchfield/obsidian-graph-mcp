@@ -51,7 +51,9 @@ EXCLUDED_DIR_NAMES = {
 EXCLUDED_PATH_FRAGMENTS = (
     "dist-info",
     ".egg-info",
-    "/uproxx/code/",  # the UPROXX codebase is a separate corpus, not documents
+    # The UPROXX codebase is a separate corpus, not consulting documents. Match
+    # without a leading slash so it hits the root-relative path "uproxx/code/...".
+    "uproxx/code/",
 )
 
 

@@ -30,8 +30,39 @@ _tool_context: ToolContext | None = None
 # Global vault watcher (separate from tool context, MCP-specific lifecycle)
 _vault_watcher: VaultWatcher | None = None
 
-# Create MCP server
-app = Server("obsidian-graph")
+# Create MCP server (name configurable so one codebase can serve multiple graphs)
+app = Server(os.getenv("MCP_SERVER_NAME", "obsidian-graph"))
+
+
+def make_embedder():
+    """
+    Build the embedder for the configured provider.
+
+    Defaults to Voyage (the vault's setup) for backward compatibility; set
+    EMBEDDING_PROVIDER=ollama (local/bigbot) or gemini for other graphs. The
+    embedder MUST match whatever produced the stored vectors.
+    """
+    provider = os.getenv("EMBEDDING_PROVIDER", "voyage").lower()
+    cache_dir = os.getenv("CACHE_DIR", str(Path.home() / ".obsidian-graph" / "cache"))
+    if provider == "ollama":
+        from .ollama_embedder import OllamaEmbedder
+
+        return OllamaEmbedder(
+            model=os.getenv("OLLAMA_EMBED_MODEL", "qwen3-embedding:0.6b"),
+            host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+            dimensions=int(os.getenv("OLLAMA_EMBED_DIMS", "1024")),
+            cache_dir=cache_dir,
+        )
+    if provider == "gemini":
+        from .gemini_embedder import GeminiEmbedder
+
+        return GeminiEmbedder(cache_dir=cache_dir)
+    return VoyageEmbedder(
+        model="voyage-context-3",
+        cache_dir=cache_dir,
+        batch_size=int(os.getenv("EMBEDDING_BATCH_SIZE", "128")),
+        requests_per_minute=int(os.getenv("EMBEDDING_REQUESTS_PER_MINUTE", "300")),
+    )
 
 
 async def initialize_server():
@@ -42,13 +73,8 @@ async def initialize_server():
 
     vault_path = os.getenv("OBSIDIAN_VAULT_PATH", "/vault")
 
-    # Initialize embedder
-    embedder = VoyageEmbedder(
-        model="voyage-context-3",
-        cache_dir=os.getenv("CACHE_DIR", str(Path.home() / ".obsidian-graph" / "cache")),
-        batch_size=int(os.getenv("EMBEDDING_BATCH_SIZE", "128")),
-        requests_per_minute=int(os.getenv("EMBEDDING_REQUESTS_PER_MINUTE", "300")),
-    )
+    # Initialize embedder (provider-configurable: voyage / ollama / gemini)
+    embedder = make_embedder()
 
     # Initialize PostgreSQL vector store
     store = PostgreSQLVectorStore(
