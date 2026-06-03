@@ -27,6 +27,10 @@ from loguru import logger
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+# Load .env BEFORE importing vector_store (its EMBEDDING_DIMENSIONS constant reads
+# the env at import time). override=True so .env wins over stale shell vars.
+load_dotenv(REPO_ROOT / ".env", override=True)
+
 from src.multi_format_indexer import index_root  # noqa: E402
 from src.vector_store import PostgreSQLVectorStore  # noqa: E402
 
@@ -46,6 +50,9 @@ def make_embedder(cache_dir: str):
 
     return OllamaEmbedder(
         model=os.getenv("OLLAMA_EMBED_MODEL", "qwen3-embedding:0.6b"),
+        host=os.getenv("OLLAMA_HOST", "http://localhost:11434"),
+        dimensions=int(os.getenv("OLLAMA_EMBED_DIMS", "1024")),
+        concurrency=int(os.getenv("OLLAMA_EMBED_CONCURRENCY", "2")),
         cache_dir=cache_dir,
     )
 

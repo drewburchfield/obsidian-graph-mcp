@@ -18,6 +18,10 @@ from dotenv import load_dotenv
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+# Load .env BEFORE importing vector_store, whose EMBEDDING_DIMENSIONS constant
+# reads the env at import time. override=True so .env wins over stale shell vars.
+load_dotenv(REPO_ROOT / ".env", override=True)
+
 from src.vector_store import PostgreSQLVectorStore  # noqa: E402
 
 
@@ -30,7 +34,9 @@ def make_embedder(cache_dir: str):
     from src.ollama_embedder import OllamaEmbedder
 
     return OllamaEmbedder(
-        model=os.getenv("OLLAMA_EMBED_MODEL", "qwen3-embedding:0.6b"), cache_dir=cache_dir
+        model=os.getenv("OLLAMA_EMBED_MODEL", "qwen3-embedding:0.6b"),
+        dimensions=int(os.getenv("OLLAMA_EMBED_DIMS", "1024")),
+        cache_dir=cache_dir,
     )
 
 
