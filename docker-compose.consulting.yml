@@ -1,0 +1,29 @@
+# Standalone pgvector for the consulting semantic graph.
+# Isolated from the Obsidian vault stack: its own container, DB, and host port,
+# so indexing the consulting folder never touches the vault graph.
+#
+#   docker compose -f docker-compose.consulting.yml up -d
+#
+# Then run:  python scripts/index_consulting.py
+services:
+  consulting-pgvector:
+    image: pgvector/pgvector:pg15
+    container_name: consulting-graph-pgvector
+    environment:
+      - POSTGRES_DB=consulting_graph
+      - POSTGRES_USER=obsidian
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5434:5432" # host 5434 -> container 5432 (vault stack uses its own network)
+    volumes:
+      - consulting-postgres-data:/var/lib/postgresql/data
+      - ./src/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obsidian -d consulting_graph"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  consulting-postgres-data:

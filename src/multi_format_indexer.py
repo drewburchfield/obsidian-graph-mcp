@@ -1,0 +1,185 @@
+"""
+Multi-format indexer: index every supported document under a root folder.
+
+Generalizes the markdown-only indexer to the full document set (PDF, DOCX,
+PPTX, HTML, CSV, XLSX, TXT) via converters.convert_file(), embedding with any
+embedder that exposes embed_with_chunks()/chunk_text() (Gemini or Voyage).
+
+Self-contained directory exclusion: a personal/consulting folder is full of
+vendored junk (.venv, node_modules, site-packages, build output) that dwarfs
+the real documents. We hard-exclude those by directory name and by path
+fragment so the index stays to the work that was actually authored.
+"""
+
+from __future__ import annotations
+
+import os
+from datetime import UTC, datetime
+from pathlib import Path
+
+from loguru import logger
+
+from .converters import SUPPORTED_EXTS, convert_file
+from .exceptions import EmbeddingError
+from .vector_store import Note, PostgreSQLVectorStore
+
+# Directory names that never contain authored documents.
+EXCLUDED_DIR_NAMES = {
+    ".git",
+    ".github",
+    "node_modules",
+    ".venv",
+    "venv",
+    "env",
+    "site-packages",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".wrangler",
+    ".playwright-mcp",
+    ".agents",
+    ".braintrust",
+    "dist",
+    "build",
+    ".next",
+    ".cache",
+    "data",
+}
+
+# Path fragments (substring match on the relative path) to exclude.
+EXCLUDED_PATH_FRAGMENTS = (
+    "dist-info",
+    ".egg-info",
+    "/uproxx/code/",  # the UPROXX codebase is a separate corpus, not documents
+)
+
+
+def _is_excluded(rel_path: str, parts: tuple[str, ...]) -> bool:
+    if any(p in EXCLUDED_DIR_NAMES for p in parts):
+        return True
+    return any(frag in rel_path for frag in EXCLUDED_PATH_FRAGMENTS)
+
+
+def scan_documents(root_path: str) -> list[Path]:
+    """Find every supported, non-excluded document under root_path."""
+    root = Path(root_path)
+    if not root.exists():
+        raise FileNotFoundError(f"Root not found: {root_path}")
+
+    found: list[Path] = []
+    excluded = 0
+    for path in root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in SUPPORTED_EXTS:
+            continue
+        rel = str(path.relative_to(root))
+        if _is_excluded(rel, path.relative_to(root).parts):
+            excluded += 1
+            continue
+        found.append(path)
+
+    by_ext: dict[str, int] = {}
+    for p in found:
+        by_ext[p.suffix.lower()] = by_ext.get(p.suffix.lower(), 0) + 1
+    logger.info(
+        f"Found {len(found)} documents under {root_path} "
+        f"({excluded} excluded). By type: {by_ext}"
+    )
+    return found
+
+
+async def index_root(
+    root_path: str,
+    store: PostgreSQLVectorStore,
+    embedder,
+    *,
+    batch_size: int = 50,
+) -> dict:
+    """
+    Index every supported document under root_path into the vector store.
+
+    Returns a summary dict: {indexed, files, chunks, failed}.
+    """
+    files = scan_documents(root_path)
+    root = Path(root_path)
+
+    total_chunks_indexed = 0
+    failed: list[dict] = []
+
+    for i in range(0, len(files), batch_size):
+        batch = files[i : i + batch_size]
+        logger.info(
+            f"Batch {i // batch_size + 1}/{(len(files) + batch_size - 1) // batch_size} "
+            f"({len(batch)} files)"
+        )
+
+        notes: list[Note] = []
+        for file_path in batch:
+            content = convert_file(file_path)
+            if not content:
+                continue
+
+            try:
+                stat = file_path.stat()
+                modified_at = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
+                rel_path = str(file_path.relative_to(root))
+
+                embeddings_list, total_chunks = await embedder.embed_with_chunks(
+                    content, chunk_size=2000, input_type="document"
+                )
+
+                if total_chunks == 1:
+                    notes.append(
+                        Note(
+                            path=rel_path,
+                            title=file_path.stem,
+                            content=content,
+                            embedding=embeddings_list[0],
+                            modified_at=modified_at,
+                            file_size_bytes=stat.st_size,
+                            chunk_index=0,
+                            total_chunks=1,
+                        )
+                    )
+                else:
+                    chunks = embedder.chunk_text(content, chunk_size=2000, overlap=0)
+                    for idx, (chunk, emb) in enumerate(
+                        zip(chunks, embeddings_list, strict=False)
+                    ):
+                        notes.append(
+                            Note(
+                                path=rel_path,
+                                title=file_path.stem,
+                                content=chunk,
+                                embedding=emb,
+                                modified_at=modified_at,
+                                file_size_bytes=stat.st_size,
+                                chunk_index=idx,
+                                total_chunks=total_chunks,
+                            )
+                        )
+            except EmbeddingError as e:
+                logger.error(f"Failed to embed {file_path.name}: {e}")
+                failed.append({"path": str(file_path), "error": str(e)})
+            except Exception as e:  # noqa: BLE001 - keep going on a single bad file
+                logger.error(f"Error indexing {file_path.name}: {e}")
+                failed.append({"path": str(file_path), "error": str(e)})
+
+        if notes:
+            count = await store.upsert_batch(notes)
+            total_chunks_indexed += count
+            logger.info(f"Indexed {count} chunks (running total: {total_chunks_indexed})")
+
+    summary = {
+        "indexed": total_chunks_indexed,
+        "files": len(files),
+        "chunks": total_chunks_indexed,
+        "failed": len(failed),
+    }
+    if failed:
+        logger.warning(
+            f"{len(failed)} files failed:\n"
+            + "\n".join(f"  - {Path(f['path']).name}: {f['error']}" for f in failed[:10])
+        )
+    logger.success(f"Index complete: {summary}")
+    return summary
