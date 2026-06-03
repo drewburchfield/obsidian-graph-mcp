@@ -38,6 +38,15 @@ SAMPLE_ROWS = 3
 # Lazily-initialized singletons (imports are heavy / optional)
 _markitdown = None
 
+# PostgreSQL TEXT columns reject NUL (0x00); some PDFs/exports leak control bytes.
+# Strip all C0 control chars except tab/newline/carriage-return.
+_BAD_CONTROL_CHARS = {c: None for c in range(0x20) if c not in (0x09, 0x0A, 0x0D)}
+
+
+def _sanitize(text: str) -> str:
+    """Remove NUL and other disallowed control bytes so Postgres can store it."""
+    return text.translate(_BAD_CONTROL_CHARS)
+
 
 def is_supported(path: Path) -> bool:
     return path.suffix.lower() in SUPPORTED_EXTS
@@ -148,12 +157,14 @@ def convert_file(path: Path) -> str | None:
     ext = path.suffix.lower()
     try:
         if ext in PASSTHROUGH_EXTS:
-            return _convert_passthrough(path)
-        if ext in MARKITDOWN_EXTS:
-            return _convert_markitdown(path)
-        if ext in TABULAR_EXTS:
-            return _convert_tabular(path)
-        return None
+            text = _convert_passthrough(path)
+        elif ext in MARKITDOWN_EXTS:
+            text = _convert_markitdown(path)
+        elif ext in TABULAR_EXTS:
+            text = _convert_tabular(path)
+        else:
+            return None
+        return _sanitize(text) if text else None
     except Exception as e:  # noqa: BLE001 - resilience: skip bad files, keep going
         logger.warning(f"Failed to convert {path.name}: {e}")
         return None

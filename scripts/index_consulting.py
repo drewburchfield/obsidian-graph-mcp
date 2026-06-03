@@ -53,8 +53,12 @@ async def main() -> int:
         logger.error("POSTGRES_PASSWORD is not set (shared with the pgvector container).")
         return 1
 
+    # Free-tier safe: small per-request token footprint, sequential, patient on
+    # 429s (the limit is per-minute). Override via env for paid tier (faster).
     embedder = GeminiEmbedder(
         cache_dir=str(REPO_ROOT / "data" / "consulting_cache"),
+        batch_size=int(os.getenv("EMBEDDING_BATCH_SIZE", "5")),
+        concurrency=int(os.getenv("EMBEDDING_CONCURRENCY", "1")),
     )
     store = PostgreSQLVectorStore(
         host=args.host,

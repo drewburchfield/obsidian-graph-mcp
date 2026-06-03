@@ -84,7 +84,7 @@ class GeminiEmbedder:
         cache_dir: str = "./data/embeddings_cache",
         batch_size: int = 50,
         api_timeout: float = 120.0,
-        max_retries: int = 4,
+        max_retries: int = 6,
         dimensions: int = EMBEDDING_DIMENSIONS,
         concurrency: int = 4,
     ):
@@ -184,9 +184,12 @@ class GeminiEmbedder:
             except Exception as e:  # noqa: BLE001 - normalized into EmbeddingError below
                 last_error = e
                 s = str(e)
-                retryable = any(c in s for c in ("429", "500", "503")) or "RESOURCE_EXHAUSTED" in s
-                if retryable and attempt < self.max_retries - 1:
-                    backoff = 2 ** (attempt + 1)
+                is_rate = "429" in s or "RESOURCE_EXHAUSTED" in s
+                is_server = "500" in s or "503" in s
+                if (is_rate or is_server) and attempt < self.max_retries - 1:
+                    # Free-tier limit is per-minute; wait long enough for the
+                    # window to reset rather than a short exponential bump.
+                    backoff = min(60, 20 * (attempt + 1)) if is_rate else 2 ** (attempt + 1)
                     logger.warning(
                         f"Embed retry in {backoff}s ({attempt + 1}/{self.max_retries}): "
                         f"{_redact_sensitive(s)[:90]}"
