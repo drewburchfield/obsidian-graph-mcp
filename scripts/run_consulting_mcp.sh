@@ -12,7 +12,7 @@ export POSTGRES_PASSWORD
 
 export MCP_SERVER_NAME="consulting-graph"
 export EMBEDDING_PROVIDER="ollama"
-export OLLAMA_HOST="http://100.117.32.59:11436"      # bigbot MLX server over tailnet
+export OLLAMA_HOST="http://bigs-mac-mini.tailec95ad.ts.net:11436"  # bigbot MLX server (MagicDNS, survives IP changes)
 export OLLAMA_EMBED_MODEL="qwen3-embedding-4b-mlx"
 export OLLAMA_EMBED_DIMS="2560"
 export EMBEDDING_DIMENSIONS="2560"                    # must match the vector(2560) column

@@ -45,6 +45,16 @@ EXCLUDED_DIR_NAMES = {
     ".next",
     ".cache",
     "data",
+    # Standard archive convention across the consulting tree: a directory named
+    # "_archive" holds superseded work at any depth. Never index it.
+    "_archive",
+    # Agent/skill tooling config, not consulting work product.
+    ".claude",
+}
+
+# Exact filenames that are tooling config, not authored consulting content.
+EXCLUDED_FILENAMES = {
+    "AGENTS.md",
 }
 
 # Path fragments (substring match on the relative path) to exclude.
@@ -54,11 +64,16 @@ EXCLUDED_PATH_FRAGMENTS = (
     # The UPROXX codebase is a separate corpus, not consulting documents. Match
     # without a leading slash so it hits the root-relative path "uproxx/code/...".
     "uproxx/code/",
+    # Demo/sample artifact using the placeholder client "Acme Logistics" (the
+    # discovery memo is literally labeled a template). Not a real engagement.
+    "acme-logistics/",
 )
 
 
 def _is_excluded(rel_path: str, parts: tuple[str, ...]) -> bool:
     if any(p in EXCLUDED_DIR_NAMES for p in parts):
+        return True
+    if parts and parts[-1] in EXCLUDED_FILENAMES:
         return True
     return any(frag in rel_path for frag in EXCLUDED_PATH_FRAGMENTS)
 

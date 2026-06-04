@@ -19,8 +19,10 @@ from pgvector.asyncpg import register_vector
 
 from .exceptions import DatabaseError
 
-# Expected embedding dimensions for voyage-context-3
-EMBEDDING_DIMENSIONS = 1024
+# Expected embedding dimensions. Defaults to 1024 (voyage-context-3 / Gemini /
+# Qwen3-0.6B); override via EMBEDDING_DIMENSIONS for other models (e.g. Qwen3-8B
+# at 4096). Must match the pgvector column width.
+EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "1024"))
 
 
 @dataclass
