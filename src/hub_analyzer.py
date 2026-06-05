@@ -61,13 +61,19 @@ class HubAnalyzer:
             # Check if connection_count needs refresh
             await self._ensure_fresh_counts(threshold)
 
-            # Query hubs
+            # Query hubs. connection_count is stored per chunk, so collapse to one
+            # row per document (its most-connected chunk) before ranking — otherwise
+            # a heavily-chunked note floods every slot.
             async with self.store.pool.acquire() as conn:
                 results = await conn.fetch(
                     """
                     SELECT path, title, connection_count
-                    FROM notes
-                    WHERE connection_count >= $1
+                    FROM (
+                        SELECT DISTINCT ON (path) path, title, connection_count
+                        FROM notes
+                        WHERE connection_count >= $1
+                        ORDER BY path, connection_count DESC
+                    ) doc_hubs
                     ORDER BY connection_count DESC
                     LIMIT $2
                     """,
@@ -108,12 +114,19 @@ class HubAnalyzer:
             # Check if connection_count needs refresh
             await self._ensure_fresh_counts(threshold)
 
-            # Query orphans
+            # Query orphans. Collapse to one row per document first, keyed to each
+            # doc's MOST-connected chunk: a note is only an orphan if even its best
+            # chunk is weakly connected. (Without this, a multi-chunk note lists once
+            # per chunk and a single isolated chunk can mislabel a connected doc.)
             async with self.store.pool.acquire() as conn:
                 results = await conn.fetch(
                     """
                     SELECT path, title, connection_count, modified_at
-                    FROM notes
+                    FROM (
+                        SELECT DISTINCT ON (path) path, title, connection_count, modified_at
+                        FROM notes
+                        ORDER BY path, connection_count DESC
+                    ) doc_max
                     WHERE connection_count <= $1
                     ORDER BY connection_count ASC, modified_at DESC
                     LIMIT $2
