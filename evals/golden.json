@@ -1,0 +1,218 @@
+[
+  {
+    "query": "How can I calculate the salaried equivalent of my monthly independent contractor fee?",
+    "path": "admin/tax-calculator.xlsx",
+    "chunk": 7,
+    "content": "What full-time W-2 salary equals your consulting arrangement?, INPUTS, Monthly consulting rate (per engagement)) - Unnamed: 1: object (e.g. 22500, 0.5, 270000) - Unnamed: 2: str (e.g. What client pays you per month, 0.5 = 50% of your time, Simple market conversion) Sample rows: | Consulting Rate \u2192 W-2 Salary Equivalent | Unnamed: 1 | Unnamed: 2 | |:--------------------------------------------------------------|-------------:|-------------:| | What full-time W-2 salary equals your consulting arrangement? | nan | nan | | nan | nan | nan | | INPUT"
+  },
+  {
+    "query": "What is the maximum income limit before the married joint business deduction disappears entirely?",
+    "path": "admin/tax-calculator.xlsx",
+    "chunk": 13,
+    "content": "nan | QBI Rate | 0.2 | | 0.37 | 751600 | 9999999999 | nan | QBI SSTB Threshold (MFJ) | 402800 | | nan | nan | nan | nan | QBI SSTB Phaseout Top (MFJ) | 502800 | | nan | nan | nan | nan | CTC per child | 2000 | | nan | nan | nan | nan | CTC Phaseout Start (MFJ) | 400000 | | nan | nan | nan | nan | CTC Phaseout Rate per $1000 | 50 | | nan | nan | nan | nan | CTC Refundable Max per child | 1700 | | nan | nan | nan | nan | SE Tax Base Multiplier | 0.9235 |"
+  },
+  {
+    "query": "What street address is listed on our company's current vendor tax form?",
+    "path": "admin/tax/w9/Method House LLC - W-9 - 2026.pdf",
+    "chunk": 1,
+    "content": "(Applies to accounts maintained outside the United States.) 5 Address (number, street, and apt. or suite no.). See instructions. 3101 St Stephens Way 6 City, state, and ZIP code Franklin, TN 37064 7 List account number(s) here (optional) Requester\u2019s name and address (optional) Part I Taxpayer Identification Number (TIN) Enter your TIN in the appropriate box. The TIN provided must match the name given on line 1 to avoid backup withholding. For individuals, this is generally your social security number (SSN). However, for a resident alien, sole p"
+  },
+  {
+    "query": "What makes an entity count as domestic for federal revenue purposes?",
+    "path": "admin/tax/w9/Method House LLC - W-9 - 2026.pdf",
+    "chunk": 4,
+    "content": "person and a requester gives you a form other than Form W-9 to request your TIN, you must use the requester\u2019s form if it is substantially similar to this Form W-9. Definition of a U.S. person. For federal tax purposes, you are considered a U.S. person if you are: \u2022 An individual who is a U.S. citizen or U.S. resident alien; \u2022 A partnership, corporation, company, or association created or organized in the United States or under the laws of the United States; \u2022 An estate (other than a foreign estate); or \u2022 A domestic trust (as defined in Regulati"
+  },
+  {
+    "query": "What approach gets client teams to their first breakthrough moment fastest?",
+    "path": "medvet/meetings/transcript-2026-04-15.md",
+    "chunk": 8,
+    "content": "1] Drew: Or internal workflows. [15:15:46] Drew: And. Yeah. And, and the. [15:15:49] Drew: Yeah, I'm trying. There's one other thing. [15:15:53] Drew: Yeah. I mean, what, essentially, the, what I want to come in and do with any company is, like, come and teach the framework of what I've seen work really well and try to have it to people apply it to the problems they have in their day-to-day. That's usually the quickest way to get, like, everybody to an aha moment. [15:16:09] Drew: The thing that I think is interesting about AI, you're not going"
+  },
+  {
+    "query": "What is the client's primary goal for the first six months of the engagement?",
+    "path": "medvet/meetings/transcript-2026-04-15.md",
+    "chunk": 16,
+    "content": "Any other questions you have for us? [15:29:44] Drew: In terms of. [15:29:46] Drew: Like, for if, you know, if you end up bringing in someone like me, like, what, what do you feel like the kind of the, that kind of that short-term need is? What would you want to get accomplished in kind of that first month? And if you get to the end of that six months, like, what is a, what a success feel like? [15:30:03] Other: So I would selfishly say it's really helping with the rollout of this tool across the organization, ensuring that it's adapted uniform"
+  },
+  {
+    "query": "What was Drew's job title right before starting independent advisory work?",
+    "path": "medvet/meetings/transcript-2026-04-15.md",
+    "chunk": 6,
+    "content": "I mean. [15:12:08] Other: Because we're very emotional group at med. [15:12:12] Other: Icine. [15:12:13] Drew: Yeah. So my background is I, I was the founder of a company that's been sold twice and essentially over the past two years I was head of, like, product at a, at. [15:12:24] Drew: A kind of a holding company that managed three software platforms and, you know, AI started to show up on the scene at the end of 2024. [15:12:33] Drew: Maybe. And so we, some of us internally started to see that happen. [15:12:38] Drew: And I would say halfwa"
+  },
+  {
+    "query": "How do the executives justify the cost of the lower-performing business units?",
+    "path": "medvet/meetings/transcript-2026-04-15.md",
+    "chunk": 5,
+    "content": "If not, then you've got to Orient their work. [15:10:32] Other: Yeah. [15:10:34] Drew: And that kind of thing. [15:10:35] Other: And my guess is if you really pinned them down, you'd probably, those leaders would say that the top of their leaderboard, the efforts pay for the lower part of the leaderboard would be my, my, my guess is how they would voice it. [15:10:35] Drew: But. [15:10:48] Drew: Yeah, but it's also not in, I would say largely. [15:10:53] Drew: Maybe, but a lot of them are, they're, their capital is, the capitalization structure"
+  },
+  {
+    "query": "Which specific responses cause a participant to skip questions seven and eight?",
+    "path": "methodhouse-survey/RUNBOOK.md",
+    "chunk": 7,
+    "content": "Logic schema (from v3.6.2 `packages/types/surveys/types.ts`): question-level `logic[].conditions` (ZConditionGroup: `{id(cuid2),connector,conditions[]}`; single condition has NO `connector` key, `leftOperand{type:\"question\",value:qid}`, `operator:\"equalsOneOf\"`, `rightOperand{type:\"static\",value:[choiceIds]}`) + `actions[]` `{id(cuid2),objective:\"jumpToQuestion\",target:<endingId>}`. All logic/condition/action **and ending ids must be cuid2**. Branch lives on `onsite_ask`: gate \u2208 {gate_1,gate_2,gate_3} \u2192 jump to ending (skips Q7/Q8). PUT is Zod-"
+  },
+  {
+    "query": "Why are we legally permitted to hide the vendor watermark without paying for an upgraded tier?",
+    "path": "methodhouse-survey/RUNBOOK.md",
+    "chunk": 1,
+    "content": "Verified safe via source trace (formbricks/formbricks DeepWiki): the link-survey render pipeline (`LinkSurveyPage` -> `renderSurvey()` -> `LinkSurvey` -> `isBrandingEnabled={project.linkSurveyBranding}` -> `SurveyInline`) reads the DB boolean directly with NO license check at request time. The enterprise license check (`getRemoveBrandingPermission()`) only gates the dashboard UI toggle, not rendering. No `ENTERPRISE_LICENSE_KEY` is set, so there is no phone-home to ee.formbricks.com and no detection path. AGPLv3 permits this. How it was done (r"
+  },
+  {
+    "query": "Where is the mapping file that links participant names to their unique questionnaire URLs?",
+    "path": "methodhouse-survey/RUNBOOK.md",
+    "chunk": 5,
+    "content": "closeOnDate (2026-05-31 23:59) + Q6 branch logic (gate_1/2/3 \u2192 ending) verified preserved post-write. `railway redeploy --service survey-app` (exit 0) to bust the tag cache. Roster recovered from Scot's email \"Next week dates\" 2026-05-13 (\"AI User list by Priority, PHASE ONE\", 19 rows; #19 = Drew's own consultant acct). 18 single-use links generated (`?suId=<cuid>&client_id=divi&cohort_id=chapelhill-1&wave=pre&survey_version=2`). suId\u2192person map: `templates/ai-readiness-diagnostic/.cohort-roster.local.json` (**gitignored**, split_confidential f"
+  },
+  {
+    "query": "What is the suggested workaround since built-in URL minification is broken on our current deployment?",
+    "path": "methodhouse-survey/RUNBOOK.md",
+    "chunk": 6,
+    "content": "Test: inserted 2 ShortUrl rows (8-char + cuid2-format ids), both `https://survey.methodhouse.org/<id>` \u2192 HTTP 200 Formbricks **not-found** page (not a 3xx), pre- and post-redeploy. Test rows deleted, table back to 0. **Do not retry native short links on this image.** Path to shorten if ever needed: (A) hyperlink the long URL behind anchor text in the HTML cohort email \u2014 recipient never sees the string, zero infra, recommended; (B) Cloudflare Bulk Redirects / Worker on the methodhouse.org zone (we control it; ~19 rules) for a visible short link"
+  },
+  {
+    "query": "Why might computing volume costs need to be moved out of the technology department's financial plan?",
+    "path": "research/ai-budgeting-2026/ai-budgeting-2026.html",
+    "chunk": 1,
+    "content": "**You are budgeting for capability, not for tools.** This is the framing Aaron Levie reported back from a recent dinner with twenty-plus enterprise AI leaders: > \"Lots of emerging questions on how we will budget for tokens across use-cases and teams. Companies don't want to constrain use-cases, but equally need to be mindful of ultimate token budgets. This is going to become a bigger part of OpEx over time, and probably won't make sense to be considered an IT budget anymore. Likely needs to be factored into the rest of operating expenses.\" > Aa"
+  },
+  {
+    "query": "Which fintech firm had to undo their automation layoffs because of a drop in service quality?",
+    "path": "research/ai-budgeting-2026/ai-budgeting-2026.html",
+    "chunk": 6,
+    "content": "When the official path is unclear, employees build their own; when their builds carry production data, security finds out the hard way. ### The \"we replaced our humans with AI\" narrative The Klarna saga is now a named cautionary tale. Sebastian Siemiatkowski's aggressive AI-replaces-humans framing was walked back publicly in 2025, with the company restoring human roles after customer experience suffered. The lesson is not \"AI does not work for support.\" The lesson is that the narrative shape (\"AI replaces people\") is wrong, and that companies r"
+  },
+  {
+    "query": "What specific parameter must be passed back to Anthropic's API to prevent conversational memory loss?",
+    "path": "research/ai-budgeting-2026/sources/x-bookmarks-last3mo.md",
+    "chunk": 27,
+    "content": "Most tutorials hand-wave this. This one shows the architecture. Follow @codewithimanshu for production AI permission patterns every week. \u2193 Session persistence: the multi-turn unlock. Most AI integrations forget everything between calls. That's why your \"AI assistant\" feels like talking to someone with amnesia. Return a `session ID` and Claude resumes exactly where you left off. Full context preserved. Multi-turn conversations across hours, days, deploys. This is the foundation for building any real AI product that holds context. Customize the"
+  },
+  {
+    "query": "Who suggested funding bad concepts if they come from highly intelligent founders?",
+    "path": "research/ai-budgeting-2026/sources/x-bookmarks-relevant.md",
+    "chunk": 6,
+    "content": "quite literally neuroprotective, it enhances neuroplasticity, and it promotes neurogenesis. bookmark this now, because you do NOT want to lose this asset. let\u2019s begin. our stack is split into two, with some overlaps. the main difference in the stacks ... --- ## @jawwwn_ (Jawwwn) - Fri Dec 12 Engagement: 1535 | Matches: 2 | URL: https://x.com/jawwwn_/status/1999286397489106949 Palantir cofounder @JTLonsdale: \u201cWhen you have the smartest people in the world, you should invest in their terrible ideas.\u201d \u201cIn 2022 we met these people doing something r"
+  },
+  {
+    "query": "Which external plugins are required to process international payments in the client's accounting software?",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-data-engineering-tdd.html",
+    "chunk": 19,
+    "content": "Adjustments that re-state a prior business date emit a new fact row with that day's rate. Currency conversion at query time silently re-states history when the rate table updates. Forbid it in the model layer. ### Multi-currency in Sage 100: the precondition Base Sage 100 is single-currency. Multi-currency on AR/AP/GL only exists with a third-party add-on (AcuteData APMC/ARMC/GLMC, IIG MCG for the GL module, or DSD Business Systems). **Discovery question for finance:** is the add-on installed? If not, Divi's Sage 100 holds USD-only, and the Car"
+  },
+  {
+    "query": "What causes pre-existing information quality issues to suddenly become urgent priorities for clients?",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/01-ai-transformation-kickoff.md",
+    "chunk": 27,
+    "content": "So what it drives most companies to do is you will work with this for a month. There will be a series of frustrations that you'll have that you all share, like trying to interact with some of the same things and like, all right, we have to fix this. You'll feel like you're going to go crazy. And it's usually a kind of. It's not a new core problem to the business. It just becomes now it moves up the. It'll end up moving up the priority list just because you can't get good outcomes or do some of these very quick things without the data being corr"
+  },
+  {
+    "query": "Where did the meeting participant work before joining their current analytics agency?",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/09-marketing-part-2-brian.md",
+    "chunk": 50,
+    "content": "So not like not reporting out of like a specific tool. It's more of just reporting in general. Like Marco wants to see like the stuff in real time, wants it to feel like it's accurate, things like that. And that is like easier said than done in this environment right now. Speaker A: The reason I ask is that I come from an organization called Clear. Speaker C: Yeah, yeah. Speaker A: Small little consulting for just a few of us. But we're working on some stuff that's why I say that. Basically we started as a business intelligence firm, Crystal Re"
+  },
+  {
+    "query": "Which specific features need to be manually activated because they aren't enabled out of the box?",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/planning-2026-05-26-divi-ai-adoption.md",
+    "chunk": 19,
+    "content": "And if these things are on, then it will just be better for her. I think that, that's it. It's really. Adding in, like, file system and desktop Commander extensions. Installing chroma. Installing Chrome extension and then making sure. Microsoft 365 is connected and then just. Toggling on the three capabilities that are off by default. So search and chat reference chats. Memory and then AI powered artifacts. That should be. And if they do it on apps, then awesome. Them: And for. Excel. So I. I mean, the Mac version is numbers, so I. Me: You will"
+  },
+  {
+    "query": "Does the agency cover any out-of-pocket costs for external advisors under the standard contract?",
+    "path": "templates/agreements/method-house-independent-contractor-agreement-template.md",
+    "chunk": 9,
+    "content": "I have no authority to bind the Company or any Company Client, make commitments on behalf of the Company or any Company Client, or represent otherwise. Nothing in this Agreement requires the Company to provide any minimum amount of work. **(b) Taxes and Benefits.** I am responsible for my own taxes, withholdings, insurance, equipment, workspace, licenses, permits, and expenses, except to the extent the Company expressly agrees otherwise in writing. The Company will not provide me with employee benefits, paid leave, unemployment insurance, worke"
+  },
+  {
+    "query": "How is performance evaluated for clients in highly restrictive industries during the initial rollout?",
+    "path": "templates/method-house-engagement-playbook.md",
+    "chunk": 7,
+    "content": "Manager accountability is the central work. - **C. Regulated, Cautious, Senior Sponsor.** Healthcare, finance, legal, government contractors, hospitality with PCI/GDPR exposure. Phase 0 includes legal/compliance review. Phase 1 starts with one pilot department. AI Policy is the central deliverable. Success measured partly by absence of incidents. - **D. Forced AI Culture, Quiet Resentment.** Half of Phase 0 surfaces resentment honestly with ICs. AI Mission rewritten *with* the workforce. Public usage leaderboards killed in week one. Flywheel ru"
+  },
+  {
+    "query": "What mistake do average-sized enterprises make when evaluating compliance requirements for new vendors?",
+    "path": "templates/select platform/AI Platform Selection Framework - Drew Burchfield.pdf",
+    "chunk": 5,
+    "content": "Hospitality under GDPR + PCI \u2260 Healthcare under HIPAA \u2260 Broker-dealer under FINRA. Pitches often conflate these. // THE DISTINCTION THAT MATTERS ARCHITECTURAL DEMAND CONTRACTUAL / PROCEDURAL DEMAND Specific controls must be present in the processing Satisfied at the DPA level, not the architecture level. path. Most mid-market companies sit in the second category and shop as if they sit in the first. DREW BURCHFIELD \u00b7 INDEPENDENT AI ADVISOR // \u00a7 02 \u00b7 COMPLIANCE \u00b7 REGIME MAP P.07 / 24 // COMPLIANCE REGIME MAP Two kinds of demand. Two different an"
+  },
+  {
+    "query": "Which regulatory framework dictates privacy standards for investment and trading firms?",
+    "path": "templates/select platform/AI Platform Selection Framework - Drew Burchfield - UPDATED.pdf",
+    "chunk": 5,
+    "content": "Federal sectoral (HIPAA, GLBA, ITAR, CMMC) \u00b7 General privacy (GDPR, CCPA) \u00b7 Contractual (PCI, MSAs, owner agreements). Q3 Which regime is actually present, versus imported from elsewhere? Hospitality under GDPR + PCI \u2260 Healthcare under HIPAA \u2260 Broker-dealer under FINRA. Pitches often conflate these. // THE DISTINCTION THAT MATTERS ARCHITECTURAL DEMAND CONTRACTUAL / PROCEDURAL DEMAND Specific controls must be present in the processing Satisfied at the DPA level, not the architecture level. path. Most mid-market companies sit in the second catego"
+  },
+  {
+    "query": "What is the recommended prompt structure for generating project updates from existing documents?",
+    "path": "thompson/delivery/ai-guide/index.html",
+    "chunk": 21,
+    "content": "Label each clearly. Before you finalize, ask me 3 clarification questions. Word AgentLevel 2+ Copy Create a status report based on /[attached file]. Start with a clear title, add an executive summary, organize content by section, keep paragraphs short and focused. WordAll Levels Copy Rewrite this as a 100-word intro suitable for a website or newsletter. ### Presentations PowerPointAll Levels Copy Create a presentation from /[Word document] with key findings and recommendations. PowerPointLevel 2+ Copy Add speaker notes to each slide summarizing"
+  },
+  {
+    "query": "How can users extract valuable responses from a conversational thread to avoid losing them later?",
+    "path": "thompson/docs/specs/2026-03-27-thompson-copilot-hub-prd.md",
+    "chunk": 15,
+    "content": "**Copilot Pages.** When Copilot gives you a useful answer in Chat, click \"Edit in Pages\" to turn it into a persistent, editable, shareable document. This is how you prevent good outputs from being buried in chat history. You can share a Page with colleagues for collaborative editing. Use cases: - Turn a meeting summary into a shared action item tracker - Save a report analysis as a reference document - Build a team brief collaboratively from a Copilot-generated draft **Critique (Multi-Model Deep Research).** Announced March 30, 2026 by Satya Na"
+  },
+  {
+    "query": "At what point in the initial proof-of-concept timeline is the first invoice payment expected?",
+    "path": "thompson/research/cn-dataworks-proposal/cn-dataworks-proposal-2026-05-21-OCR.md",
+    "chunk": 4,
+    "content": "### Two Phases | Phase | Duration | Engagement Model | Pricing | | :--- | :--- | :--- | :--- | | 1 \u2014 POC of Architectural & Tools Decisions | 6-week sprint | Fixed-fee | **[REDACTED \u2014 thick black marker scribble fully obscures the figure in the scan; not recoverable]** | | 2 \u2014 Build-Out | ~16-24 weeks (scope-dependent) | Fixed-fee per workstream or T&M with not-to-exceed | TBD post-POC | Each phase is independently scoped and contracted. Phase 1 outputs become Phase 2 inputs. Payment terms: 50% due after Week 4 (mid-engagement milestone), 50% d"
+  },
+  {
+    "query": "Who authored the article about writing command-line automation for Microsoft's low-code environment?",
+    "path": "thompson/research/power-platform-cli-deep-dive.md",
+    "chunk": 14,
+    "content": "copilot/blog/copilot-studio/6-core-capabilities-to-scale-agent-adoption-in-2026/) - [Power Platform 2025 Release Wave 2](https://learn.microsoft.com/en-us/power-platform/release-plan/2025wave2/power-automate/) - [AI Builder 2025 Release Wave 1](https://learn.microsoft.com/en-us/power-platform/release-plan/2025wave1/ai-builder/) - [PAC CLI Scripting (Daniel Laskewitz)](https://devblogs.microsoft.com/powerplatform/create-scripts-with-power-platform-cli/) - [Power Platform ALM with GitHub Actions (Urs Ruegg)](https://www.ursruegg.com/blog/blogPowe"
+  },
+  {
+    "query": "What is the primary intended outcome for sales reps using the new audience calculation dashboard?",
+    "path": "uproxx/research/business-intelligence-brief.md",
+    "chunk": 23,
+    "content": "Rep enters buyer's current plan, system shows incremental reach from adding UPROXX, with a reach curve that updates as you adjust budget. **Revenue impact:** Turns every sales meeting from \"let me get back to you with numbers\" into \"let me show you right now.\" Kris was clear this is initially a showcase tool, not transactional (Mar 16): *\"no expectation of real adoption... just a showcase our sellers can show.\"* **Data required:** Comscore audience duplication data (critical dependency, API access confirmed but unused per Mar 30 kickoff), audie"
+  },
+  {
+    "query": "How are mid-flight performance updates currently delivered to external media buying partners?",
+    "path": "uproxx/research/business-intelligence-brief.md",
+    "chunk": 16,
+    "content": "Strategy packages into presentation deck \u2502 \u25bc Proposal delivered (deck + media plan spreadsheet) \u2502 \u251c\u2500\u2500 Media-only deal \u2500\u2500\u25ba IO signed or PG setup in DV360 \u2502 \u251c\u2500\u2500 Content + media bundle \u2500\u2500\u25ba Production phase (weeks to months) \u2502 Content distributed on O&O + WMG \u2502 YouTube media runs simultaneously \u2502 \u25bc Campaign runs - Trafficking (manual DV360/GAM setup) - Daily/weekly pacing checks (manual, per Kris Mar 16: \"still pretty manual\") - Pacing reports to agency (manual export + email) - Mid-campaign deck if needed \u2502 \u25bc Campaign ends - Wrap deck (standardize"
+  },
+  {
+    "query": "What numeric scale is used to quantify a musician's current trajectory and overall industry standing?",
+    "path": "uproxx/research/chartmetric-schema-design.md",
+    "chunk": 1,
+    "content": "| Data | Endpoint | Refresh | Notes | |------|----------|---------|-------| | Artist cached stats + ranks (ALL platforms in one call) | `GET /api/artist/:id/cmStats` | Daily | **The workhorse.** Returns ~60 platform metrics + weekly/monthly diffs + global ranks. One call per artist. | | Career stage + momentum | `GET /api/artist/:id/career` | Twice weekly | stage (undiscovered through legendary), momentum (decline through explosive growth), both with 0-100 scores. | | CPP rank + score | `GET /api/artist/:id/cpp` | Daily | Cross-platform perform"
+  },
+  {
+    "query": "Which third-party data provider helps supply the target audience characteristics for the analytics API?",
+    "path": "uproxx/research/comscore-api-research.md",
+    "chunk": 3,
+    "content": "- **Unique Visitors / Unique Viewers:** Deduplicated across measured platforms - **Total Audience Reach:** Percentage of total digital/video population reached - **Total Minutes / Time Spent:** Engagement depth - **Page Views / Video Views:** Volume metrics - **Sessions / Visits:** Frequency of engagement - **Average Daily Visitors:** Smoothed audience metric ### 3.2 Demographics Available demographic dimensions (from Comscore panel + Experian match): | Category | Available Segments | |----------|-------------------| | **Age/Gender** | Standard"
+  },
+  {
+    "query": "How does the platform determine which new proprietary product to launch next?",
+    "path": "zero/agentic-commerce-stack-research.md",
+    "chunk": 8,
+    "content": "There is no behavioral attachment to a particular Publisher. **(b) The aggregator sees every search query.** Zero knows what 4,931 capabilities are being searched for, which ones convert, which ones fail. That is a richer demand-signal than any retailer's POS data. The next Company Offering is selected from a real-time view of unmet demand. **(c) Publication latency is days, not quarters.** A Cloudflare Worker plus a catalog entry is the entire production line. Compare to Walmart spinning up Great Value for a new product category, which involve"
+  },
+  {
+    "query": "What is the registered corporate name and location associated with the primary domain?",
+    "path": "zero/agentic-commerce-stack-research.md",
+    "chunk": 12,
+    "content": "| Source | Type | Finding | |---|---|---| | `https://zero.xyz/terms-of-service` | Operator's own legal document | Confirms operating entity, two-class catalog, no Publisher take-rate disclosure | | WHOIS on `zeroclick.ai` | ICANN registry | Confirms Ryan Hudson, The People's Internet Experiment, Marina Del Rey CA | | WHOIS on `zclk.cc` | ICANN registry | Privacy-shielded via Cloudflare; cannot directly confirm operator | | `curl POST https://site.zclk.cc/run` (no payment) | Direct probe | Returns `HTTP 402` with single recipient `0x43B5274b75E8"
+  },
+  {
+    "query": "Which specific indexing site closed its doors because users migrated to a larger crypto-backed protocol?",
+    "path": "zero/agentic-commerce-stack-research.md",
+    "chunk": 10,
+    "content": "**Standalone aggregators visibly dying.** The April 2026 shutdown of x402.watch is a live data point. The protocol-level Bazaar (Coinbase) absorbed the demand. Zero is structurally different (private-label captive supply, onramp position) but the indexer-only piece of their business has a precedent for getting squeezed. **Regulatory.** The EU Digital Markets Act treats self-preferencing on aggregator platforms as a competition issue. Zero is small enough to be below the threshold today, but the model is not infinitely scalable without regulator"
+  },
+  {
+    "query": "What is the cost structure for transaction settlement via the default provider after exceeding the trial allowance?",
+    "path": "zero/agentic-commerce-stack-research.md",
+    "chunk": 3,
+    "content": "A facilitator is a service that verifies a 402 payment is valid and executes the on-chain settlement. Operators do not have to run their own blockchain plumbing \u2014 they delegate to a facilitator. The facilitator market is competitive. | Facilitator | Operator | Pricing | Notes | |---|---|---|---| | CDP Facilitator | Coinbase | Free tier: 1,000 settled payments/month. After: $0.001 per settled payment (effective Jan 1, 2026) | Default for x402; also runs the Bazaar indexing | | xpay Facilitator | xpay | Zero fees, gas sponsored | Aggressive go-to"
+  }
+]

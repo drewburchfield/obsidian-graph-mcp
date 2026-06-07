@@ -92,20 +92,26 @@ async def search_notes(ctx: ToolContext, arguments: dict[str, Any]) -> dict[str,
     if not _rerank_enabled():
         results = await ctx.store.search(query_embedding, limit, validated["threshold"])
     else:
-        # Verified consulting pipeline: dense + BM25 hybrid (RRF) -> Cohere rerank -> top-N.
+        # Consulting pipeline: dense + BM25 hybrid candidate pool, then FUSE the
+        # hybrid ranking with the Cohere rerank ranking (RRF). Fusing (not pure
+        # rerank order) keeps the reranker's signal without letting it bury a
+        # strong dense hit -- on the braintrust eval this is the robust choice
+        # (best R@10), since results feed an LLM that reads the whole top-N.
         dense = await ctx.store.search(query_embedding, _POOL_SIZE, threshold=0.0)
         lexical = await ctx.store.lexical_search(query, _POOL_SIZE)
         pool = _rrf(dense, lexical)[:_POOL_SIZE]
         try:
             order = await asyncio.to_thread(
-                _reranker().rerank, query, [r.content for r in pool], limit
+                _reranker().rerank, query, [r.content for r in pool], len(pool)
             )
-            results = []
-            for idx, score in order[:limit]:
-                r = pool[idx]
-                results.append(
-                    type(r)(path=r.path, title=r.title, content=r.content, similarity=float(score))
-                )
+            rerank_score = {pool[idx].content: float(s) for idx, s in order}
+            rerank_ranked = [pool[idx] for idx, _ in order]
+            fused = _rrf(pool, rerank_ranked)[:limit]
+            results = [
+                type(r)(path=r.path, title=r.title, content=r.content,
+                        similarity=rerank_score.get(r.content, r.similarity))
+                for r in fused
+            ]
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Rerank failed, falling back to hybrid order: {e}")
             results = pool[:limit]
