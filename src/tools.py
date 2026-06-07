@@ -6,8 +6,12 @@ components, and return structured results. Used by server.py (MCP) and
 can be reused by future transports (CLI, REST).
 """
 
+import asyncio
+import os
 from dataclasses import dataclass
 from typing import Any
+
+from loguru import logger
 
 from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
@@ -21,7 +25,35 @@ from .validation import (
     validate_search_notes_args,
     validate_similar_notes_args,
 )
+from .reranker import CohereReranker
 from .vector_store import PostgreSQLVectorStore
+
+# --- consulting-graph retrieval pipeline (verified: hybrid + Cohere rerank) ---
+_RERANKER: CohereReranker | None = None
+_POOL_SIZE = int(os.getenv("RERANK_POOL", "50"))
+
+
+def _rerank_enabled() -> bool:
+    return os.getenv("CONSULTING_RERANK", "").lower() in ("1", "true", "yes")
+
+
+def _reranker() -> CohereReranker:
+    global _RERANKER
+    if _RERANKER is None:
+        _RERANKER = CohereReranker()
+    return _RERANKER
+
+
+def _rrf(*result_lists, k: int = 60):
+    """Reciprocal Rank Fusion over SearchResult lists, keyed by chunk content."""
+    scores: dict[str, float] = {}
+    obj: dict[str, Any] = {}
+    for results in result_lists:
+        for rank, r in enumerate(results):
+            key = r.content
+            scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank + 1)
+            obj[key] = r
+    return [obj[key] for key, _ in sorted(scores.items(), key=lambda kv: -kv[1])]
 
 
 @dataclass
@@ -49,13 +81,34 @@ async def search_notes(ctx: ToolContext, arguments: dict[str, Any]) -> dict[str,
         {"results": [{"path", "title", "content", "similarity"}, ...]}
     """
     validated = validate_search_notes_args(arguments)
+    query = validated["query"]
+    limit = validated["limit"]
 
     try:
-        query_embedding = await ctx.embedder.embed(validated["query"], input_type="query")
+        query_embedding = await ctx.embedder.embed(query, input_type="query")
     except EmbeddingError as e:
         raise ToolError(f"Failed to generate query embedding: {e}") from e
 
-    results = await ctx.store.search(query_embedding, validated["limit"], validated["threshold"])
+    if not _rerank_enabled():
+        results = await ctx.store.search(query_embedding, limit, validated["threshold"])
+    else:
+        # Verified consulting pipeline: dense + BM25 hybrid (RRF) -> Cohere rerank -> top-N.
+        dense = await ctx.store.search(query_embedding, _POOL_SIZE, threshold=0.0)
+        lexical = await ctx.store.lexical_search(query, _POOL_SIZE)
+        pool = _rrf(dense, lexical)[:_POOL_SIZE]
+        try:
+            order = await asyncio.to_thread(
+                _reranker().rerank, query, [r.content for r in pool], limit
+            )
+            results = []
+            for idx, score in order[:limit]:
+                r = pool[idx]
+                results.append(
+                    type(r)(path=r.path, title=r.title, content=r.content, similarity=float(score))
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Rerank failed, falling back to hybrid order: {e}")
+            results = pool[:limit]
 
     return {
         "results": [

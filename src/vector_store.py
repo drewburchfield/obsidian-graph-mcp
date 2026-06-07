@@ -223,6 +223,30 @@ class PostgreSQLVectorStore:
         except Exception as e:
             raise VectorStoreError(f"Search failed: {e}") from e
 
+    async def lexical_search(self, query_text: str, limit: int = 50) -> list[SearchResult]:
+        """BM25-style full-text (tsvector) candidate retrieval for the hybrid leg."""
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+        q = """
+            SELECT path, title, content,
+                   ts_rank_cd(fts, websearch_to_tsquery('english', $1)) AS rank
+            FROM notes
+            WHERE fts @@ websearch_to_tsquery('english', $1)
+            ORDER BY rank DESC
+            LIMIT $2
+        """
+        try:
+            async with self.pool.acquire() as conn:
+                rows = await asyncio.wait_for(conn.fetch(q, query_text, limit), timeout=5.0)
+            return [
+                SearchResult(path=r["path"], title=r["title"], content=r["content"],
+                             similarity=float(r["rank"]))
+                for r in rows
+            ]
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Lexical search failed (continuing dense-only): {e}")
+            return []
+
     async def get_similar_notes(
         self, note_path: str, limit: int = 10, threshold: float = 0.5
     ) -> list[SearchResult]:
