@@ -3,216 +3,528 @@
     "query": "How can I calculate the salaried equivalent of my monthly independent contractor fee?",
     "path": "admin/tax-calculator.xlsx",
     "chunk": 7,
-    "content": "What full-time W-2 salary equals your consulting arrangement?, INPUTS, Monthly consulting rate (per engagement)) - Unnamed: 1: object (e.g. 22500, 0.5, 270000) - Unnamed: 2: str (e.g. What client pays you per month, 0.5 = 50% of your time, Simple market conversion) Sample rows: | Consulting Rate \u2192 W-2 Salary Equivalent | Unnamed: 1 | Unnamed: 2 | |:--------------------------------------------------------------|-------------:|-------------:| | What full-time W-2 salary equals your consulting arrangement? | nan | nan | | nan | nan | nan | | INPUT"
+    "content": "What full-time W-2 salary equals your consulting arrangement?, INPUTS, Monthly consulting rate (per engagement)) - Unnamed: 1: object (e.g. 22500, 0.5, 270000) - Unnamed: 2: str (e.g. What client pays you per month, 0.5 = 50% of your time, Simple market conversion) Sample rows: | Consulting Rate \u2192 W-2 Salary Equivalent | Unnamed: 1 | Unnamed: 2 | |:--------------------------------------------------------------|-------------:|-------------:| | What full-time W-2 salary equals your consulting arrangement? | nan | nan | | nan | nan | nan | | INPUT",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What is the maximum income limit before the married joint business deduction disappears entirely?",
     "path": "admin/tax-calculator.xlsx",
     "chunk": 13,
-    "content": "nan | QBI Rate | 0.2 | | 0.37 | 751600 | 9999999999 | nan | QBI SSTB Threshold (MFJ) | 402800 | | nan | nan | nan | nan | QBI SSTB Phaseout Top (MFJ) | 502800 | | nan | nan | nan | nan | CTC per child | 2000 | | nan | nan | nan | nan | CTC Phaseout Start (MFJ) | 400000 | | nan | nan | nan | nan | CTC Phaseout Rate per $1000 | 50 | | nan | nan | nan | nan | CTC Refundable Max per child | 1700 | | nan | nan | nan | nan | SE Tax Base Multiplier | 0.9235 |"
+    "content": "nan | QBI Rate | 0.2 | | 0.37 | 751600 | 9999999999 | nan | QBI SSTB Threshold (MFJ) | 402800 | | nan | nan | nan | nan | QBI SSTB Phaseout Top (MFJ) | 502800 | | nan | nan | nan | nan | CTC per child | 2000 | | nan | nan | nan | nan | CTC Phaseout Start (MFJ) | 400000 | | nan | nan | nan | nan | CTC Phaseout Rate per $1000 | 50 | | nan | nan | nan | nan | CTC Refundable Max per child | 1700 | | nan | nan | nan | nan | SE Tax Base Multiplier | 0.9235 |",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What street address is listed on our company's current vendor tax form?",
     "path": "admin/tax/w9/Method House LLC - W-9 - 2026.pdf",
     "chunk": 1,
-    "content": "(Applies to accounts maintained outside the United States.) 5 Address (number, street, and apt. or suite no.). See instructions. 3101 St Stephens Way 6 City, state, and ZIP code Franklin, TN 37064 7 List account number(s) here (optional) Requester\u2019s name and address (optional) Part I Taxpayer Identification Number (TIN) Enter your TIN in the appropriate box. The TIN provided must match the name given on line 1 to avoid backup withholding. For individuals, this is generally your social security number (SSN). However, for a resident alien, sole p"
+    "content": "(Applies to accounts maintained outside the United States.) 5 Address (number, street, and apt. or suite no.). See instructions. 3101 St Stephens Way 6 City, state, and ZIP code Franklin, TN 37064 7 List account number(s) here (optional) Requester\u2019s name and address (optional) Part I Taxpayer Identification Number (TIN) Enter your TIN in the appropriate box. The TIN provided must match the name given on line 1 to avoid backup withholding. For individuals, this is generally your social security number (SSN). However, for a resident alien, sole p",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What makes an entity count as domestic for federal revenue purposes?",
     "path": "admin/tax/w9/Method House LLC - W-9 - 2026.pdf",
     "chunk": 4,
-    "content": "person and a requester gives you a form other than Form W-9 to request your TIN, you must use the requester\u2019s form if it is substantially similar to this Form W-9. Definition of a U.S. person. For federal tax purposes, you are considered a U.S. person if you are: \u2022 An individual who is a U.S. citizen or U.S. resident alien; \u2022 A partnership, corporation, company, or association created or organized in the United States or under the laws of the United States; \u2022 An estate (other than a foreign estate); or \u2022 A domestic trust (as defined in Regulati"
+    "content": "person and a requester gives you a form other than Form W-9 to request your TIN, you must use the requester\u2019s form if it is substantially similar to this Form W-9. Definition of a U.S. person. For federal tax purposes, you are considered a U.S. person if you are: \u2022 An individual who is a U.S. citizen or U.S. resident alien; \u2022 A partnership, corporation, company, or association created or organized in the United States or under the laws of the United States; \u2022 An estate (other than a foreign estate); or \u2022 A domestic trust (as defined in Regulati",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What approach gets client teams to their first breakthrough moment fastest?",
     "path": "medvet/meetings/transcript-2026-04-15.md",
     "chunk": 8,
-    "content": "1] Drew: Or internal workflows. [15:15:46] Drew: And. Yeah. And, and the. [15:15:49] Drew: Yeah, I'm trying. There's one other thing. [15:15:53] Drew: Yeah. I mean, what, essentially, the, what I want to come in and do with any company is, like, come and teach the framework of what I've seen work really well and try to have it to people apply it to the problems they have in their day-to-day. That's usually the quickest way to get, like, everybody to an aha moment. [15:16:09] Drew: The thing that I think is interesting about AI, you're not going"
+    "content": "1] Drew: Or internal workflows. [15:15:46] Drew: And. Yeah. And, and the. [15:15:49] Drew: Yeah, I'm trying. There's one other thing. [15:15:53] Drew: Yeah. I mean, what, essentially, the, what I want to come in and do with any company is, like, come and teach the framework of what I've seen work really well and try to have it to people apply it to the problems they have in their day-to-day. That's usually the quickest way to get, like, everybody to an aha moment. [15:16:09] Drew: The thing that I think is interesting about AI, you're not going",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What is the client's primary goal for the first six months of the engagement?",
     "path": "medvet/meetings/transcript-2026-04-15.md",
     "chunk": 16,
-    "content": "Any other questions you have for us? [15:29:44] Drew: In terms of. [15:29:46] Drew: Like, for if, you know, if you end up bringing in someone like me, like, what, what do you feel like the kind of the, that kind of that short-term need is? What would you want to get accomplished in kind of that first month? And if you get to the end of that six months, like, what is a, what a success feel like? [15:30:03] Other: So I would selfishly say it's really helping with the rollout of this tool across the organization, ensuring that it's adapted uniform"
+    "content": "Any other questions you have for us? [15:29:44] Drew: In terms of. [15:29:46] Drew: Like, for if, you know, if you end up bringing in someone like me, like, what, what do you feel like the kind of the, that kind of that short-term need is? What would you want to get accomplished in kind of that first month? And if you get to the end of that six months, like, what is a, what a success feel like? [15:30:03] Other: So I would selfishly say it's really helping with the rollout of this tool across the organization, ensuring that it's adapted uniform",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What was Drew's job title right before starting independent advisory work?",
     "path": "medvet/meetings/transcript-2026-04-15.md",
     "chunk": 6,
-    "content": "I mean. [15:12:08] Other: Because we're very emotional group at med. [15:12:12] Other: Icine. [15:12:13] Drew: Yeah. So my background is I, I was the founder of a company that's been sold twice and essentially over the past two years I was head of, like, product at a, at. [15:12:24] Drew: A kind of a holding company that managed three software platforms and, you know, AI started to show up on the scene at the end of 2024. [15:12:33] Drew: Maybe. And so we, some of us internally started to see that happen. [15:12:38] Drew: And I would say halfwa"
+    "content": "I mean. [15:12:08] Other: Because we're very emotional group at med. [15:12:12] Other: Icine. [15:12:13] Drew: Yeah. So my background is I, I was the founder of a company that's been sold twice and essentially over the past two years I was head of, like, product at a, at. [15:12:24] Drew: A kind of a holding company that managed three software platforms and, you know, AI started to show up on the scene at the end of 2024. [15:12:33] Drew: Maybe. And so we, some of us internally started to see that happen. [15:12:38] Drew: And I would say halfwa",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "How do the executives justify the cost of the lower-performing business units?",
     "path": "medvet/meetings/transcript-2026-04-15.md",
     "chunk": 5,
-    "content": "If not, then you've got to Orient their work. [15:10:32] Other: Yeah. [15:10:34] Drew: And that kind of thing. [15:10:35] Other: And my guess is if you really pinned them down, you'd probably, those leaders would say that the top of their leaderboard, the efforts pay for the lower part of the leaderboard would be my, my, my guess is how they would voice it. [15:10:35] Drew: But. [15:10:48] Drew: Yeah, but it's also not in, I would say largely. [15:10:53] Drew: Maybe, but a lot of them are, they're, their capital is, the capitalization structure"
+    "content": "If not, then you've got to Orient their work. [15:10:32] Other: Yeah. [15:10:34] Drew: And that kind of thing. [15:10:35] Other: And my guess is if you really pinned them down, you'd probably, those leaders would say that the top of their leaderboard, the efforts pay for the lower part of the leaderboard would be my, my, my guess is how they would voice it. [15:10:35] Drew: But. [15:10:48] Drew: Yeah, but it's also not in, I would say largely. [15:10:53] Drew: Maybe, but a lot of them are, they're, their capital is, the capitalization structure",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Which specific responses cause a participant to skip questions seven and eight?",
     "path": "methodhouse-survey/RUNBOOK.md",
     "chunk": 7,
-    "content": "Logic schema (from v3.6.2 `packages/types/surveys/types.ts`): question-level `logic[].conditions` (ZConditionGroup: `{id(cuid2),connector,conditions[]}`; single condition has NO `connector` key, `leftOperand{type:\"question\",value:qid}`, `operator:\"equalsOneOf\"`, `rightOperand{type:\"static\",value:[choiceIds]}`) + `actions[]` `{id(cuid2),objective:\"jumpToQuestion\",target:<endingId>}`. All logic/condition/action **and ending ids must be cuid2**. Branch lives on `onsite_ask`: gate \u2208 {gate_1,gate_2,gate_3} \u2192 jump to ending (skips Q7/Q8). PUT is Zod-"
+    "content": "Logic schema (from v3.6.2 `packages/types/surveys/types.ts`): question-level `logic[].conditions` (ZConditionGroup: `{id(cuid2),connector,conditions[]}`; single condition has NO `connector` key, `leftOperand{type:\"question\",value:qid}`, `operator:\"equalsOneOf\"`, `rightOperand{type:\"static\",value:[choiceIds]}`) + `actions[]` `{id(cuid2),objective:\"jumpToQuestion\",target:<endingId>}`. All logic/condition/action **and ending ids must be cuid2**. Branch lives on `onsite_ask`: gate \u2208 {gate_1,gate_2,gate_3} \u2192 jump to ending (skips Q7/Q8). PUT is Zod-",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Why are we legally permitted to hide the vendor watermark without paying for an upgraded tier?",
     "path": "methodhouse-survey/RUNBOOK.md",
     "chunk": 1,
-    "content": "Verified safe via source trace (formbricks/formbricks DeepWiki): the link-survey render pipeline (`LinkSurveyPage` -> `renderSurvey()` -> `LinkSurvey` -> `isBrandingEnabled={project.linkSurveyBranding}` -> `SurveyInline`) reads the DB boolean directly with NO license check at request time. The enterprise license check (`getRemoveBrandingPermission()`) only gates the dashboard UI toggle, not rendering. No `ENTERPRISE_LICENSE_KEY` is set, so there is no phone-home to ee.formbricks.com and no detection path. AGPLv3 permits this. How it was done (r"
+    "content": "Verified safe via source trace (formbricks/formbricks DeepWiki): the link-survey render pipeline (`LinkSurveyPage` -> `renderSurvey()` -> `LinkSurvey` -> `isBrandingEnabled={project.linkSurveyBranding}` -> `SurveyInline`) reads the DB boolean directly with NO license check at request time. The enterprise license check (`getRemoveBrandingPermission()`) only gates the dashboard UI toggle, not rendering. No `ENTERPRISE_LICENSE_KEY` is set, so there is no phone-home to ee.formbricks.com and no detection path. AGPLv3 permits this. How it was done (r",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Where is the mapping file that links participant names to their unique questionnaire URLs?",
     "path": "methodhouse-survey/RUNBOOK.md",
     "chunk": 5,
-    "content": "closeOnDate (2026-05-31 23:59) + Q6 branch logic (gate_1/2/3 \u2192 ending) verified preserved post-write. `railway redeploy --service survey-app` (exit 0) to bust the tag cache. Roster recovered from Scot's email \"Next week dates\" 2026-05-13 (\"AI User list by Priority, PHASE ONE\", 19 rows; #19 = Drew's own consultant acct). 18 single-use links generated (`?suId=<cuid>&client_id=divi&cohort_id=chapelhill-1&wave=pre&survey_version=2`). suId\u2192person map: `templates/ai-readiness-diagnostic/.cohort-roster.local.json` (**gitignored**, split_confidential f"
+    "content": "closeOnDate (2026-05-31 23:59) + Q6 branch logic (gate_1/2/3 \u2192 ending) verified preserved post-write. `railway redeploy --service survey-app` (exit 0) to bust the tag cache. Roster recovered from Scot's email \"Next week dates\" 2026-05-13 (\"AI User list by Priority, PHASE ONE\", 19 rows; #19 = Drew's own consultant acct). 18 single-use links generated (`?suId=<cuid>&client_id=divi&cohort_id=chapelhill-1&wave=pre&survey_version=2`). suId\u2192person map: `templates/ai-readiness-diagnostic/.cohort-roster.local.json` (**gitignored**, split_confidential f",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What is the suggested workaround since built-in URL minification is broken on our current deployment?",
     "path": "methodhouse-survey/RUNBOOK.md",
     "chunk": 6,
-    "content": "Test: inserted 2 ShortUrl rows (8-char + cuid2-format ids), both `https://survey.methodhouse.org/<id>` \u2192 HTTP 200 Formbricks **not-found** page (not a 3xx), pre- and post-redeploy. Test rows deleted, table back to 0. **Do not retry native short links on this image.** Path to shorten if ever needed: (A) hyperlink the long URL behind anchor text in the HTML cohort email \u2014 recipient never sees the string, zero infra, recommended; (B) Cloudflare Bulk Redirects / Worker on the methodhouse.org zone (we control it; ~19 rules) for a visible short link"
+    "content": "Test: inserted 2 ShortUrl rows (8-char + cuid2-format ids), both `https://survey.methodhouse.org/<id>` \u2192 HTTP 200 Formbricks **not-found** page (not a 3xx), pre- and post-redeploy. Test rows deleted, table back to 0. **Do not retry native short links on this image.** Path to shorten if ever needed: (A) hyperlink the long URL behind anchor text in the HTML cohort email \u2014 recipient never sees the string, zero infra, recommended; (B) Cloudflare Bulk Redirects / Worker on the methodhouse.org zone (we control it; ~19 rules) for a visible short link",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Why might computing volume costs need to be moved out of the technology department's financial plan?",
     "path": "research/ai-budgeting-2026/ai-budgeting-2026.html",
     "chunk": 1,
-    "content": "**You are budgeting for capability, not for tools.** This is the framing Aaron Levie reported back from a recent dinner with twenty-plus enterprise AI leaders: > \"Lots of emerging questions on how we will budget for tokens across use-cases and teams. Companies don't want to constrain use-cases, but equally need to be mindful of ultimate token budgets. This is going to become a bigger part of OpEx over time, and probably won't make sense to be considered an IT budget anymore. Likely needs to be factored into the rest of operating expenses.\" > Aa"
+    "content": "**You are budgeting for capability, not for tools.** This is the framing Aaron Levie reported back from a recent dinner with twenty-plus enterprise AI leaders: > \"Lots of emerging questions on how we will budget for tokens across use-cases and teams. Companies don't want to constrain use-cases, but equally need to be mindful of ultimate token budgets. This is going to become a bigger part of OpEx over time, and probably won't make sense to be considered an IT budget anymore. Likely needs to be factored into the rest of operating expenses.\" > Aa",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Which fintech firm had to undo their automation layoffs because of a drop in service quality?",
     "path": "research/ai-budgeting-2026/ai-budgeting-2026.html",
     "chunk": 6,
-    "content": "When the official path is unclear, employees build their own; when their builds carry production data, security finds out the hard way. ### The \"we replaced our humans with AI\" narrative The Klarna saga is now a named cautionary tale. Sebastian Siemiatkowski's aggressive AI-replaces-humans framing was walked back publicly in 2025, with the company restoring human roles after customer experience suffered. The lesson is not \"AI does not work for support.\" The lesson is that the narrative shape (\"AI replaces people\") is wrong, and that companies r"
+    "content": "When the official path is unclear, employees build their own; when their builds carry production data, security finds out the hard way. ### The \"we replaced our humans with AI\" narrative The Klarna saga is now a named cautionary tale. Sebastian Siemiatkowski's aggressive AI-replaces-humans framing was walked back publicly in 2025, with the company restoring human roles after customer experience suffered. The lesson is not \"AI does not work for support.\" The lesson is that the narrative shape (\"AI replaces people\") is wrong, and that companies r",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What specific parameter must be passed back to Anthropic's API to prevent conversational memory loss?",
     "path": "research/ai-budgeting-2026/sources/x-bookmarks-last3mo.md",
     "chunk": 27,
-    "content": "Most tutorials hand-wave this. This one shows the architecture. Follow @codewithimanshu for production AI permission patterns every week. \u2193 Session persistence: the multi-turn unlock. Most AI integrations forget everything between calls. That's why your \"AI assistant\" feels like talking to someone with amnesia. Return a `session ID` and Claude resumes exactly where you left off. Full context preserved. Multi-turn conversations across hours, days, deploys. This is the foundation for building any real AI product that holds context. Customize the"
+    "content": "Most tutorials hand-wave this. This one shows the architecture. Follow @codewithimanshu for production AI permission patterns every week. \u2193 Session persistence: the multi-turn unlock. Most AI integrations forget everything between calls. That's why your \"AI assistant\" feels like talking to someone with amnesia. Return a `session ID` and Claude resumes exactly where you left off. Full context preserved. Multi-turn conversations across hours, days, deploys. This is the foundation for building any real AI product that holds context. Customize the",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Who suggested funding bad concepts if they come from highly intelligent founders?",
     "path": "research/ai-budgeting-2026/sources/x-bookmarks-relevant.md",
     "chunk": 6,
-    "content": "quite literally neuroprotective, it enhances neuroplasticity, and it promotes neurogenesis. bookmark this now, because you do NOT want to lose this asset. let\u2019s begin. our stack is split into two, with some overlaps. the main difference in the stacks ... --- ## @jawwwn_ (Jawwwn) - Fri Dec 12 Engagement: 1535 | Matches: 2 | URL: https://x.com/jawwwn_/status/1999286397489106949 Palantir cofounder @JTLonsdale: \u201cWhen you have the smartest people in the world, you should invest in their terrible ideas.\u201d \u201cIn 2022 we met these people doing something r"
+    "content": "quite literally neuroprotective, it enhances neuroplasticity, and it promotes neurogenesis. bookmark this now, because you do NOT want to lose this asset. let\u2019s begin. our stack is split into two, with some overlaps. the main difference in the stacks ... --- ## @jawwwn_ (Jawwwn) - Fri Dec 12 Engagement: 1535 | Matches: 2 | URL: https://x.com/jawwwn_/status/1999286397489106949 Palantir cofounder @JTLonsdale: \u201cWhen you have the smartest people in the world, you should invest in their terrible ideas.\u201d \u201cIn 2022 we met these people doing something r",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Which external plugins are required to process international payments in the client's accounting software?",
     "path": "rippelos/divi new workspace/2026-05-19-divi-data-engineering-tdd.html",
     "chunk": 19,
-    "content": "Adjustments that re-state a prior business date emit a new fact row with that day's rate. Currency conversion at query time silently re-states history when the rate table updates. Forbid it in the model layer. ### Multi-currency in Sage 100: the precondition Base Sage 100 is single-currency. Multi-currency on AR/AP/GL only exists with a third-party add-on (AcuteData APMC/ARMC/GLMC, IIG MCG for the GL module, or DSD Business Systems). **Discovery question for finance:** is the add-on installed? If not, Divi's Sage 100 holds USD-only, and the Car"
+    "content": "Adjustments that re-state a prior business date emit a new fact row with that day's rate. Currency conversion at query time silently re-states history when the rate table updates. Forbid it in the model layer. ### Multi-currency in Sage 100: the precondition Base Sage 100 is single-currency. Multi-currency on AR/AP/GL only exists with a third-party add-on (AcuteData APMC/ARMC/GLMC, IIG MCG for the GL module, or DSD Business Systems). **Discovery question for finance:** is the add-on installed? If not, Divi's Sage 100 holds USD-only, and the Car",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What causes pre-existing information quality issues to suddenly become urgent priorities for clients?",
     "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/01-ai-transformation-kickoff.md",
     "chunk": 27,
-    "content": "So what it drives most companies to do is you will work with this for a month. There will be a series of frustrations that you'll have that you all share, like trying to interact with some of the same things and like, all right, we have to fix this. You'll feel like you're going to go crazy. And it's usually a kind of. It's not a new core problem to the business. It just becomes now it moves up the. It'll end up moving up the priority list just because you can't get good outcomes or do some of these very quick things without the data being corr"
+    "content": "So what it drives most companies to do is you will work with this for a month. There will be a series of frustrations that you'll have that you all share, like trying to interact with some of the same things and like, all right, we have to fix this. You'll feel like you're going to go crazy. And it's usually a kind of. It's not a new core problem to the business. It just becomes now it moves up the. It'll end up moving up the priority list just because you can't get good outcomes or do some of these very quick things without the data being corr",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Where did the meeting participant work before joining their current analytics agency?",
     "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/09-marketing-part-2-brian.md",
     "chunk": 50,
-    "content": "So not like not reporting out of like a specific tool. It's more of just reporting in general. Like Marco wants to see like the stuff in real time, wants it to feel like it's accurate, things like that. And that is like easier said than done in this environment right now. Speaker A: The reason I ask is that I come from an organization called Clear. Speaker C: Yeah, yeah. Speaker A: Small little consulting for just a few of us. But we're working on some stuff that's why I say that. Basically we started as a business intelligence firm, Crystal Re"
+    "content": "So not like not reporting out of like a specific tool. It's more of just reporting in general. Like Marco wants to see like the stuff in real time, wants it to feel like it's accurate, things like that. And that is like easier said than done in this environment right now. Speaker A: The reason I ask is that I come from an organization called Clear. Speaker C: Yeah, yeah. Speaker A: Small little consulting for just a few of us. But we're working on some stuff that's why I say that. Basically we started as a business intelligence firm, Crystal Re",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Which specific features need to be manually activated because they aren't enabled out of the box?",
     "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/planning-2026-05-26-divi-ai-adoption.md",
     "chunk": 19,
-    "content": "And if these things are on, then it will just be better for her. I think that, that's it. It's really. Adding in, like, file system and desktop Commander extensions. Installing chroma. Installing Chrome extension and then making sure. Microsoft 365 is connected and then just. Toggling on the three capabilities that are off by default. So search and chat reference chats. Memory and then AI powered artifacts. That should be. And if they do it on apps, then awesome. Them: And for. Excel. So I. I mean, the Mac version is numbers, so I. Me: You will"
+    "content": "And if these things are on, then it will just be better for her. I think that, that's it. It's really. Adding in, like, file system and desktop Commander extensions. Installing chroma. Installing Chrome extension and then making sure. Microsoft 365 is connected and then just. Toggling on the three capabilities that are off by default. So search and chat reference chats. Memory and then AI powered artifacts. That should be. And if they do it on apps, then awesome. Them: And for. Excel. So I. I mean, the Mac version is numbers, so I. Me: You will",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Does the agency cover any out-of-pocket costs for external advisors under the standard contract?",
     "path": "templates/agreements/method-house-independent-contractor-agreement-template.md",
     "chunk": 9,
-    "content": "I have no authority to bind the Company or any Company Client, make commitments on behalf of the Company or any Company Client, or represent otherwise. Nothing in this Agreement requires the Company to provide any minimum amount of work. **(b) Taxes and Benefits.** I am responsible for my own taxes, withholdings, insurance, equipment, workspace, licenses, permits, and expenses, except to the extent the Company expressly agrees otherwise in writing. The Company will not provide me with employee benefits, paid leave, unemployment insurance, worke"
+    "content": "I have no authority to bind the Company or any Company Client, make commitments on behalf of the Company or any Company Client, or represent otherwise. Nothing in this Agreement requires the Company to provide any minimum amount of work. **(b) Taxes and Benefits.** I am responsible for my own taxes, withholdings, insurance, equipment, workspace, licenses, permits, and expenses, except to the extent the Company expressly agrees otherwise in writing. The Company will not provide me with employee benefits, paid leave, unemployment insurance, worke",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "How is performance evaluated for clients in highly restrictive industries during the initial rollout?",
     "path": "templates/method-house-engagement-playbook.md",
     "chunk": 7,
-    "content": "Manager accountability is the central work. - **C. Regulated, Cautious, Senior Sponsor.** Healthcare, finance, legal, government contractors, hospitality with PCI/GDPR exposure. Phase 0 includes legal/compliance review. Phase 1 starts with one pilot department. AI Policy is the central deliverable. Success measured partly by absence of incidents. - **D. Forced AI Culture, Quiet Resentment.** Half of Phase 0 surfaces resentment honestly with ICs. AI Mission rewritten *with* the workforce. Public usage leaderboards killed in week one. Flywheel ru"
+    "content": "Manager accountability is the central work. - **C. Regulated, Cautious, Senior Sponsor.** Healthcare, finance, legal, government contractors, hospitality with PCI/GDPR exposure. Phase 0 includes legal/compliance review. Phase 1 starts with one pilot department. AI Policy is the central deliverable. Success measured partly by absence of incidents. - **D. Forced AI Culture, Quiet Resentment.** Half of Phase 0 surfaces resentment honestly with ICs. AI Mission rewritten *with* the workforce. Public usage leaderboards killed in week one. Flywheel ru",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What mistake do average-sized enterprises make when evaluating compliance requirements for new vendors?",
     "path": "templates/select platform/AI Platform Selection Framework - Drew Burchfield.pdf",
     "chunk": 5,
-    "content": "Hospitality under GDPR + PCI \u2260 Healthcare under HIPAA \u2260 Broker-dealer under FINRA. Pitches often conflate these. // THE DISTINCTION THAT MATTERS ARCHITECTURAL DEMAND CONTRACTUAL / PROCEDURAL DEMAND Specific controls must be present in the processing Satisfied at the DPA level, not the architecture level. path. Most mid-market companies sit in the second category and shop as if they sit in the first. DREW BURCHFIELD \u00b7 INDEPENDENT AI ADVISOR // \u00a7 02 \u00b7 COMPLIANCE \u00b7 REGIME MAP P.07 / 24 // COMPLIANCE REGIME MAP Two kinds of demand. Two different an"
+    "content": "Hospitality under GDPR + PCI \u2260 Healthcare under HIPAA \u2260 Broker-dealer under FINRA. Pitches often conflate these. // THE DISTINCTION THAT MATTERS ARCHITECTURAL DEMAND CONTRACTUAL / PROCEDURAL DEMAND Specific controls must be present in the processing Satisfied at the DPA level, not the architecture level. path. Most mid-market companies sit in the second category and shop as if they sit in the first. DREW BURCHFIELD \u00b7 INDEPENDENT AI ADVISOR // \u00a7 02 \u00b7 COMPLIANCE \u00b7 REGIME MAP P.07 / 24 // COMPLIANCE REGIME MAP Two kinds of demand. Two different an",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Which regulatory framework dictates privacy standards for investment and trading firms?",
     "path": "templates/select platform/AI Platform Selection Framework - Drew Burchfield - UPDATED.pdf",
     "chunk": 5,
-    "content": "Federal sectoral (HIPAA, GLBA, ITAR, CMMC) \u00b7 General privacy (GDPR, CCPA) \u00b7 Contractual (PCI, MSAs, owner agreements). Q3 Which regime is actually present, versus imported from elsewhere? Hospitality under GDPR + PCI \u2260 Healthcare under HIPAA \u2260 Broker-dealer under FINRA. Pitches often conflate these. // THE DISTINCTION THAT MATTERS ARCHITECTURAL DEMAND CONTRACTUAL / PROCEDURAL DEMAND Specific controls must be present in the processing Satisfied at the DPA level, not the architecture level. path. Most mid-market companies sit in the second catego"
+    "content": "Federal sectoral (HIPAA, GLBA, ITAR, CMMC) \u00b7 General privacy (GDPR, CCPA) \u00b7 Contractual (PCI, MSAs, owner agreements). Q3 Which regime is actually present, versus imported from elsewhere? Hospitality under GDPR + PCI \u2260 Healthcare under HIPAA \u2260 Broker-dealer under FINRA. Pitches often conflate these. // THE DISTINCTION THAT MATTERS ARCHITECTURAL DEMAND CONTRACTUAL / PROCEDURAL DEMAND Specific controls must be present in the processing Satisfied at the DPA level, not the architecture level. path. Most mid-market companies sit in the second catego",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What is the recommended prompt structure for generating project updates from existing documents?",
     "path": "thompson/delivery/ai-guide/index.html",
     "chunk": 21,
-    "content": "Label each clearly. Before you finalize, ask me 3 clarification questions. Word AgentLevel 2+ Copy Create a status report based on /[attached file]. Start with a clear title, add an executive summary, organize content by section, keep paragraphs short and focused. WordAll Levels Copy Rewrite this as a 100-word intro suitable for a website or newsletter. ### Presentations PowerPointAll Levels Copy Create a presentation from /[Word document] with key findings and recommendations. PowerPointLevel 2+ Copy Add speaker notes to each slide summarizing"
+    "content": "Label each clearly. Before you finalize, ask me 3 clarification questions. Word AgentLevel 2+ Copy Create a status report based on /[attached file]. Start with a clear title, add an executive summary, organize content by section, keep paragraphs short and focused. WordAll Levels Copy Rewrite this as a 100-word intro suitable for a website or newsletter. ### Presentations PowerPointAll Levels Copy Create a presentation from /[Word document] with key findings and recommendations. PowerPointLevel 2+ Copy Add speaker notes to each slide summarizing",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "How can users extract valuable responses from a conversational thread to avoid losing them later?",
     "path": "thompson/docs/specs/2026-03-27-thompson-copilot-hub-prd.md",
     "chunk": 15,
-    "content": "**Copilot Pages.** When Copilot gives you a useful answer in Chat, click \"Edit in Pages\" to turn it into a persistent, editable, shareable document. This is how you prevent good outputs from being buried in chat history. You can share a Page with colleagues for collaborative editing. Use cases: - Turn a meeting summary into a shared action item tracker - Save a report analysis as a reference document - Build a team brief collaboratively from a Copilot-generated draft **Critique (Multi-Model Deep Research).** Announced March 30, 2026 by Satya Na"
+    "content": "**Copilot Pages.** When Copilot gives you a useful answer in Chat, click \"Edit in Pages\" to turn it into a persistent, editable, shareable document. This is how you prevent good outputs from being buried in chat history. You can share a Page with colleagues for collaborative editing. Use cases: - Turn a meeting summary into a shared action item tracker - Save a report analysis as a reference document - Build a team brief collaboratively from a Copilot-generated draft **Critique (Multi-Model Deep Research).** Announced March 30, 2026 by Satya Na",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "At what point in the initial proof-of-concept timeline is the first invoice payment expected?",
     "path": "thompson/research/cn-dataworks-proposal/cn-dataworks-proposal-2026-05-21-OCR.md",
     "chunk": 4,
-    "content": "### Two Phases | Phase | Duration | Engagement Model | Pricing | | :--- | :--- | :--- | :--- | | 1 \u2014 POC of Architectural & Tools Decisions | 6-week sprint | Fixed-fee | **[REDACTED \u2014 thick black marker scribble fully obscures the figure in the scan; not recoverable]** | | 2 \u2014 Build-Out | ~16-24 weeks (scope-dependent) | Fixed-fee per workstream or T&M with not-to-exceed | TBD post-POC | Each phase is independently scoped and contracted. Phase 1 outputs become Phase 2 inputs. Payment terms: 50% due after Week 4 (mid-engagement milestone), 50% d"
+    "content": "### Two Phases | Phase | Duration | Engagement Model | Pricing | | :--- | :--- | :--- | :--- | | 1 \u2014 POC of Architectural & Tools Decisions | 6-week sprint | Fixed-fee | **[REDACTED \u2014 thick black marker scribble fully obscures the figure in the scan; not recoverable]** | | 2 \u2014 Build-Out | ~16-24 weeks (scope-dependent) | Fixed-fee per workstream or T&M with not-to-exceed | TBD post-POC | Each phase is independently scoped and contracted. Phase 1 outputs become Phase 2 inputs. Payment terms: 50% due after Week 4 (mid-engagement milestone), 50% d",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Who authored the article about writing command-line automation for Microsoft's low-code environment?",
     "path": "thompson/research/power-platform-cli-deep-dive.md",
     "chunk": 14,
-    "content": "copilot/blog/copilot-studio/6-core-capabilities-to-scale-agent-adoption-in-2026/) - [Power Platform 2025 Release Wave 2](https://learn.microsoft.com/en-us/power-platform/release-plan/2025wave2/power-automate/) - [AI Builder 2025 Release Wave 1](https://learn.microsoft.com/en-us/power-platform/release-plan/2025wave1/ai-builder/) - [PAC CLI Scripting (Daniel Laskewitz)](https://devblogs.microsoft.com/powerplatform/create-scripts-with-power-platform-cli/) - [Power Platform ALM with GitHub Actions (Urs Ruegg)](https://www.ursruegg.com/blog/blogPowe"
+    "content": "copilot/blog/copilot-studio/6-core-capabilities-to-scale-agent-adoption-in-2026/) - [Power Platform 2025 Release Wave 2](https://learn.microsoft.com/en-us/power-platform/release-plan/2025wave2/power-automate/) - [AI Builder 2025 Release Wave 1](https://learn.microsoft.com/en-us/power-platform/release-plan/2025wave1/ai-builder/) - [PAC CLI Scripting (Daniel Laskewitz)](https://devblogs.microsoft.com/powerplatform/create-scripts-with-power-platform-cli/) - [Power Platform ALM with GitHub Actions (Urs Ruegg)](https://www.ursruegg.com/blog/blogPowe",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What is the primary intended outcome for sales reps using the new audience calculation dashboard?",
     "path": "uproxx/research/business-intelligence-brief.md",
     "chunk": 23,
-    "content": "Rep enters buyer's current plan, system shows incremental reach from adding UPROXX, with a reach curve that updates as you adjust budget. **Revenue impact:** Turns every sales meeting from \"let me get back to you with numbers\" into \"let me show you right now.\" Kris was clear this is initially a showcase tool, not transactional (Mar 16): *\"no expectation of real adoption... just a showcase our sellers can show.\"* **Data required:** Comscore audience duplication data (critical dependency, API access confirmed but unused per Mar 30 kickoff), audie"
+    "content": "Rep enters buyer's current plan, system shows incremental reach from adding UPROXX, with a reach curve that updates as you adjust budget. **Revenue impact:** Turns every sales meeting from \"let me get back to you with numbers\" into \"let me show you right now.\" Kris was clear this is initially a showcase tool, not transactional (Mar 16): *\"no expectation of real adoption... just a showcase our sellers can show.\"* **Data required:** Comscore audience duplication data (critical dependency, API access confirmed but unused per Mar 30 kickoff), audie",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "How are mid-flight performance updates currently delivered to external media buying partners?",
     "path": "uproxx/research/business-intelligence-brief.md",
     "chunk": 16,
-    "content": "Strategy packages into presentation deck \u2502 \u25bc Proposal delivered (deck + media plan spreadsheet) \u2502 \u251c\u2500\u2500 Media-only deal \u2500\u2500\u25ba IO signed or PG setup in DV360 \u2502 \u251c\u2500\u2500 Content + media bundle \u2500\u2500\u25ba Production phase (weeks to months) \u2502 Content distributed on O&O + WMG \u2502 YouTube media runs simultaneously \u2502 \u25bc Campaign runs - Trafficking (manual DV360/GAM setup) - Daily/weekly pacing checks (manual, per Kris Mar 16: \"still pretty manual\") - Pacing reports to agency (manual export + email) - Mid-campaign deck if needed \u2502 \u25bc Campaign ends - Wrap deck (standardize"
+    "content": "Strategy packages into presentation deck \u2502 \u25bc Proposal delivered (deck + media plan spreadsheet) \u2502 \u251c\u2500\u2500 Media-only deal \u2500\u2500\u25ba IO signed or PG setup in DV360 \u2502 \u251c\u2500\u2500 Content + media bundle \u2500\u2500\u25ba Production phase (weeks to months) \u2502 Content distributed on O&O + WMG \u2502 YouTube media runs simultaneously \u2502 \u25bc Campaign runs - Trafficking (manual DV360/GAM setup) - Daily/weekly pacing checks (manual, per Kris Mar 16: \"still pretty manual\") - Pacing reports to agency (manual export + email) - Mid-campaign deck if needed \u2502 \u25bc Campaign ends - Wrap deck (standardize",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What numeric scale is used to quantify a musician's current trajectory and overall industry standing?",
     "path": "uproxx/research/chartmetric-schema-design.md",
     "chunk": 1,
-    "content": "| Data | Endpoint | Refresh | Notes | |------|----------|---------|-------| | Artist cached stats + ranks (ALL platforms in one call) | `GET /api/artist/:id/cmStats` | Daily | **The workhorse.** Returns ~60 platform metrics + weekly/monthly diffs + global ranks. One call per artist. | | Career stage + momentum | `GET /api/artist/:id/career` | Twice weekly | stage (undiscovered through legendary), momentum (decline through explosive growth), both with 0-100 scores. | | CPP rank + score | `GET /api/artist/:id/cpp` | Daily | Cross-platform perform"
+    "content": "| Data | Endpoint | Refresh | Notes | |------|----------|---------|-------| | Artist cached stats + ranks (ALL platforms in one call) | `GET /api/artist/:id/cmStats` | Daily | **The workhorse.** Returns ~60 platform metrics + weekly/monthly diffs + global ranks. One call per artist. | | Career stage + momentum | `GET /api/artist/:id/career` | Twice weekly | stage (undiscovered through legendary), momentum (decline through explosive growth), both with 0-100 scores. | | CPP rank + score | `GET /api/artist/:id/cpp` | Daily | Cross-platform perform",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Which third-party data provider helps supply the target audience characteristics for the analytics API?",
     "path": "uproxx/research/comscore-api-research.md",
     "chunk": 3,
-    "content": "- **Unique Visitors / Unique Viewers:** Deduplicated across measured platforms - **Total Audience Reach:** Percentage of total digital/video population reached - **Total Minutes / Time Spent:** Engagement depth - **Page Views / Video Views:** Volume metrics - **Sessions / Visits:** Frequency of engagement - **Average Daily Visitors:** Smoothed audience metric ### 3.2 Demographics Available demographic dimensions (from Comscore panel + Experian match): | Category | Available Segments | |----------|-------------------| | **Age/Gender** | Standard"
+    "content": "- **Unique Visitors / Unique Viewers:** Deduplicated across measured platforms - **Total Audience Reach:** Percentage of total digital/video population reached - **Total Minutes / Time Spent:** Engagement depth - **Page Views / Video Views:** Volume metrics - **Sessions / Visits:** Frequency of engagement - **Average Daily Visitors:** Smoothed audience metric ### 3.2 Demographics Available demographic dimensions (from Comscore panel + Experian match): | Category | Available Segments | |----------|-------------------| | **Age/Gender** | Standard",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "How does the platform determine which new proprietary product to launch next?",
     "path": "zero/agentic-commerce-stack-research.md",
     "chunk": 8,
-    "content": "There is no behavioral attachment to a particular Publisher. **(b) The aggregator sees every search query.** Zero knows what 4,931 capabilities are being searched for, which ones convert, which ones fail. That is a richer demand-signal than any retailer's POS data. The next Company Offering is selected from a real-time view of unmet demand. **(c) Publication latency is days, not quarters.** A Cloudflare Worker plus a catalog entry is the entire production line. Compare to Walmart spinning up Great Value for a new product category, which involve"
+    "content": "There is no behavioral attachment to a particular Publisher. **(b) The aggregator sees every search query.** Zero knows what 4,931 capabilities are being searched for, which ones convert, which ones fail. That is a richer demand-signal than any retailer's POS data. The next Company Offering is selected from a real-time view of unmet demand. **(c) Publication latency is days, not quarters.** A Cloudflare Worker plus a catalog entry is the entire production line. Compare to Walmart spinning up Great Value for a new product category, which involve",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What is the registered corporate name and location associated with the primary domain?",
     "path": "zero/agentic-commerce-stack-research.md",
     "chunk": 12,
-    "content": "| Source | Type | Finding | |---|---|---| | `https://zero.xyz/terms-of-service` | Operator's own legal document | Confirms operating entity, two-class catalog, no Publisher take-rate disclosure | | WHOIS on `zeroclick.ai` | ICANN registry | Confirms Ryan Hudson, The People's Internet Experiment, Marina Del Rey CA | | WHOIS on `zclk.cc` | ICANN registry | Privacy-shielded via Cloudflare; cannot directly confirm operator | | `curl POST https://site.zclk.cc/run` (no payment) | Direct probe | Returns `HTTP 402` with single recipient `0x43B5274b75E8"
+    "content": "| Source | Type | Finding | |---|---|---| | `https://zero.xyz/terms-of-service` | Operator's own legal document | Confirms operating entity, two-class catalog, no Publisher take-rate disclosure | | WHOIS on `zeroclick.ai` | ICANN registry | Confirms Ryan Hudson, The People's Internet Experiment, Marina Del Rey CA | | WHOIS on `zclk.cc` | ICANN registry | Privacy-shielded via Cloudflare; cannot directly confirm operator | | `curl POST https://site.zclk.cc/run` (no payment) | Direct probe | Returns `HTTP 402` with single recipient `0x43B5274b75E8",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "Which specific indexing site closed its doors because users migrated to a larger crypto-backed protocol?",
     "path": "zero/agentic-commerce-stack-research.md",
     "chunk": 10,
-    "content": "**Standalone aggregators visibly dying.** The April 2026 shutdown of x402.watch is a live data point. The protocol-level Bazaar (Coinbase) absorbed the demand. Zero is structurally different (private-label captive supply, onramp position) but the indexer-only piece of their business has a precedent for getting squeezed. **Regulatory.** The EU Digital Markets Act treats self-preferencing on aggregator platforms as a competition issue. Zero is small enough to be below the threshold today, but the model is not infinitely scalable without regulator"
+    "content": "**Standalone aggregators visibly dying.** The April 2026 shutdown of x402.watch is a live data point. The protocol-level Bazaar (Coinbase) absorbed the demand. Zero is structurally different (private-label captive supply, onramp position) but the indexer-only piece of their business has a precedent for getting squeezed. **Regulatory.** The EU Digital Markets Act treats self-preferencing on aggregator platforms as a competition issue. Zero is small enough to be below the threshold today, but the model is not infinitely scalable without regulator",
+    "style": "hard",
+    "source": "gemini"
   },
   {
     "query": "What is the cost structure for transaction settlement via the default provider after exceeding the trial allowance?",
     "path": "zero/agentic-commerce-stack-research.md",
     "chunk": 3,
-    "content": "A facilitator is a service that verifies a 402 payment is valid and executes the on-chain settlement. Operators do not have to run their own blockchain plumbing \u2014 they delegate to a facilitator. The facilitator market is competitive. | Facilitator | Operator | Pricing | Notes | |---|---|---|---| | CDP Facilitator | Coinbase | Free tier: 1,000 settled payments/month. After: $0.001 per settled payment (effective Jan 1, 2026) | Default for x402; also runs the Bazaar indexing | | xpay Facilitator | xpay | Zero fees, gas sponsored | Aggressive go-to"
+    "content": "A facilitator is a service that verifies a 402 payment is valid and executes the on-chain settlement. Operators do not have to run their own blockchain plumbing \u2014 they delegate to a facilitator. The facilitator market is competitive. | Facilitator | Operator | Pricing | Notes | |---|---|---|---| | CDP Facilitator | Coinbase | Free tier: 1,000 settled payments/month. After: $0.001 per settled payment (effective Jan 1, 2026) | Default for x402; also runs the Bazaar indexing | | xpay Facilitator | xpay | Zero fees, gas sponsored | Aggressive go-to",
+    "style": "hard",
+    "source": "gemini"
+  },
+  {
+    "query": "how does the quiz flow capture emails and handle sharing results?",
+    "path": "research/rachel-woods-amp-diviup-content-dossier.md",
+    "chunk": 7,
+    "content": "Quiz flow: - Starts by asking first name. - Runs 13 questions. - Ends with email capture. - Stores result in browser session storage and sends to `/api/quiz/submit`. - Results URL pattern appears to be `/results/[slug]`. - Share tools include image download, LinkedIn copy flow, X/Twitter share, and copy link. Question types: - Fun questions: non-scored engagement prompts. - Role questions: score one or more of the five hats. - Qualifier questions: score people vs systems, proactive vs methodical. - Maturity questions: score AI maturity. Role qu",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "run on amp sitemap urls",
+    "path": "research/rachel-woods-amp-diviup-content-dossier.md",
+    "chunk": 1,
+    "content": "Run on AMP sitemap routes found: - https://runonamp.com/ - https://runonamp.com/about/ - https://runonamp.com/advisory/ - https://runonamp.com/become-an-ai-operator/ - https://runonamp.com/consult/ - https://runonamp.com/exchange/ - https://runonamp.com/for-operators/ - https://runonamp.com/for-owners/ - https://runonamp.com/home/ - https://runonamp.com/launch/ - https://runonamp.com/level-1-aio/ - https://runonamp.com/manifesto/ - https://runonamp.com/protocols/ - https://runonamp.com/protocols/momentum-over-perfection/ - https://runonamp.com/",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "timeshareware sftp credentials and daily batch process",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-data-engineering-tdd.html",
+    "chunk": 1,
+    "content": "P file drop (26 CSV files from EOD), REST exists but partner-only | SFTP credentials provisioned by Agilysys; REST OAuth2 if granted | Daily T+1 batch is the realistic baseline | batch | | TSWSS&C TimeShareWare | Owner contracts, points ledger, fees | SS&C APIM portal (Kong) at `developer.ssctech.com` | OAuth2 client credentials, application keys provisioned per partner | Nightly delta pulls on `last_updated`; events likely exist behind topic surface | gated | | CRMCendyn (PushTech) | Guest profiles, campaigns, deliverability | Public REST at `",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "example of using ai to quickly build presentation slides",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/01-ai-transformation-kickoff.md",
+    "chunk": 35,
+    "content": "And we have to constantly be analyzing that and reviewing it. Speaker D: I'll give you a fun Example, so this presentation that I did right here, this whole thing, an hour before I got here, this wasn't. Didn't exist. I had the text and the content, but didn't have it laid out probably in about 15 minutes had this put together, gave it no direction in terms of very, very basic kind of design directions. And it put all this together. So for me, as a very deficient presentation maker, it sped up my time of creation by 10 hours probably. And my re",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "drew granola capture recording travel to the island",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/06-finance.md",
+    "chunk": 56,
+    "content": "## After the meeting \u2014 from Drew's capture (his recording ran longer) *Source: Drew's Granola capture.* \u2026 Got delayed because. Oh, no, no. Look, we're, we're great. This is, this is good. It's what it takes on the first day. You just got to get in there, you know? Yeah. I, you know, whenever I travel to the island, the worst part is you got to get up around 3 30, 4 o'clock in the morning, try to the airport and all this. Just, you know, I don't know how you manage that. Hey, you know, I've got four young boys. I've got four kids, so I'm up, lik",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "how are call center agent calls QA scored and verified each month",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/08-drew-with-chris.md",
+    "chunk": 5,
+    "content": "One is I can go ahead and just listen to every call. Like randomly pick calls from every agent on the floor and listen to it and then judge it based on some preset requirements. You know, did they do verification? Did they introduce themselves? They do the greeting. You know, did they ask follow up questions, you know, things like that? Did they close the greeting? Did they ensure that the questions are answered? That takes a lot of time and it's very important. Does that happen on a per call basis? Yeah, we do two calls a month per agent. Okay",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "claude code skill to update old html widgets to new standard",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/09-marketing-part-2-brian.md",
+    "chunk": 36,
+    "content": "If you could create a cloud code version of those, especially in the style, then over time you will start creating more and more widgets that just look like they naturally fit in. And that feels fantastic. Speaker B: I mean, what I can even do is I can maybe like this is brainstorming, but I can create a skill that just goes back in and identifies all the. All of the HTML widgets and sees if anything doesn't look up to. Up to standards. Speaker C: Yeah, it's it. This is. I would probably suggest just trying to speed up your own repetitive work",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "thompson machinery 6 month engagement plan for executive training",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/planning-2026-05-12-meike-drew-connect.md",
+    "chunk": 7,
+    "content": "Me: I've got that stuff defined for both of them for the caterpillar or the Thompson machinery. That's a, like a six month engagement with them that's going to cover. Them: Look like? Me: It's going to cover a mixture of. Executive training first. And, and then doing, like, a tech team, like, deep dive. So they actually have, like, a. Fairly large Tech team, what they call it, but they're, they essentially need to be. Force fed. Like. Some of these AI tools for productivity. Like clon code or whatever their, yeah, they essentially got them to a",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "dealing with scott as gatekeeper for ai compliance",
+    "path": "rippelos/divi new workspace/2026-05-19-divi-onsite/planning-2026-05-26-divi-ai-adoption.md",
+    "chunk": 15,
+    "content": "But, and I kind of don't. Them: Okay. Me: I'm not super interested in what, Scott thinks about most of it. I mean, because he's, they're, they're. You know, we've already set up the compliance apparatus around what they're doing. Everything else is just emotion, you know, going into it. So. Them: Yeah. No, understood. But, you know, it's not still not to be ignored, I guess, the emotions around it, because I felt like everybody was a little hesitant because Scott is the ultimate. You know, gatekeeper. Me: That, that your, your job is to not. Th",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "divi aruba domains using akamai and stape server side tagging",
+    "path": "rippelos/research/2026-05-22-divi-web-topology.md",
+    "chunk": 14,
+    "content": "| | `cdn.diviandtamarijnaruba.com` | none | `66.129.86.126` | ZABCO/Vizergy support host | Extra DTA CDN-like host. | | `reservations.diviandtamarijnaruba.com` | `be4cert13.travelclick.edgekey.net` to Akamai | Akamai IPs | TravelClick/Akamai | DTA reservation path. | | `search.diviandtamarijnaruba.com` | `search.tlcresort.com.edgekey.net` to Akamai | Akamai IPs | TravelClick/Akamai | DTA search path. | | `dataga.diviandtamarijnaruba.com` | `ust.stape.io` | `35.237.250.138` | Stape server-side tagging | Found via CT. Direct request returns 404,",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "aloompa warranty disclaimer regarding customer data accuracy",
+    "path": "templates/reference-agreements/aloompa-license-agreement.docx",
+    "chunk": 17,
+    "content": "ALOOMPA EXPRESSLY DISCLAIMS ANY WARRANTY OR REPRESENTATION TO ANY PERSON OTHER THAN CUSTOMER WITH RESPECT TO THE LICENSED MATERIALS OR ANY PART THEREOF. (d) Other Disclaimers. Customer will be exclusively responsible as between the parties for, and Aloompa makes no representation or warranty with respect to, determining whether the Licensed Materials will achieve the results desired by Customer, ensuring the accuracy of any Customer Data, or selecting, procuring, installing, operating, and maintaining the technical infrastructure for Customer\u2019s",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "aloompa security policy for maintaining user id and password confidentiality",
+    "path": "templates/reference-agreements/aloompa-license-agreement.docx",
+    "chunk": 11,
+    "content": "Customer shall maintain or cause to be maintained the confidentiality of all user IDs and passwords, including implementing and enforcing such policies and procedures as Customer deems appropriate thereto, and Customer shall maintain adequate technical, physical, and procedural access controls and system security requirements and devices to ensure that access to the Server Applications by or through Customer is limited to duly authorized persons. Customer shall be solely responsible for all use or misuse of its user IDs and Aloompa shall have n",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "aloompa supported browsers chrome and firefox requirements",
+    "path": "templates/reference-agreements/aloompa-license-agreement.docx",
+    "chunk": 8,
+    "content": "the Proposal or Documentation, or if not so specified, the then-current - 3 - version of Google Chrome or Mozilla Firefox in an information technology environment reasonably acceptable to Aloompa (provided, however, that upon reasonable notice to Customer from time to time Aloompa may revise such specifications or implement new specifications to address the evolution of such technology) and (ii) in accordance with the Documentation and any operating instructions provided by Aloompa from time to time. Aloompa shall have no obligation to provide",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "aloompa aggregate liability limitation clause in license agreement",
+    "path": "templates/reference-agreements/aloompa-license-agreement.docx",
+    "chunk": 22,
+    "content": "OTHER THAN WITH RESPECT TO CUSTOMER\u2019S PAYMENT OBLIGATIONS UNDER THIS AGREEMENT AND CUSTOMER\u2019S USE OF THE LICENSED MATERIALS OTHER THAN IN ACCORDANCE WITH THE LICENSE GRANTED IN THIS AGREEMENT, IN NO EVENT SHALL A PARTY'S AGGREGATE LIABILITY TO THE OTHER PARTY (INCLUDING LIABILITY TO ANY PERSON OR PERSONS WHOSE CLAIM OR CLAIMS ARE BASED ON OR DERIVED FROM A RIGHT OR RIGHTS CLAIMED - 8 - BY OR THROUGH SUCH PARTY), WITH RESPECT TO ANY AND ALL CLAIMS AT ANY AND ALL TIMES ARISING FROM OR RELATED TO THE SUBJECT MATTER OF THIS AGREEMENT, IN CONTRACT,",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "ai platform comparison showing native desktop app and 200k context",
+    "path": "templates/select platform/AI Platform Selection Framework - Drew Burchfield - UPDATED.pdf",
+    "chunk": 14,
+    "content": "\u25b3 Generic chat surface \u2014 no thinking toggle yet \u2713 Native desktop app \u2014 context across the whole \u25b3 Browser-only \u2014 no desktop app, no OS-level context machine, not a browser tab \u25b3 No coworking mode \u2014 chat turns, not real-time \u2713 Coworking mode drafting alongside the operator in real collaboration time \u2713 Native file handling \u2014 financials, decks, call transcripts ingested clean \u2713 \u2713 \u2713 \u2713 \u2713 200K context \u2014 a year of company data in one session Prompt caching \u2014 iterating on drafts costs ~10% of fresh Agentic coding (Claude Code, GitHub Copilot) for analy",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "cost optimization impact of using ai gateway vs direct api",
+    "path": "templates/select platform/AI Platform Selection Framework - Drew Burchfield - UPDATED.pdf",
+    "chunk": 11,
+    "content": "ask \u2192 Show me TCO on our actual expected usage, with downstream consumption and rate limits. DREW BURCHFIELD \u00b7 PRINCIPAL, METHOD HOUSE \u00b7 DREWBURCHFIELD.COM // \u00a7 03 \u00b7 ECONOMICS \u00b7 FEATURE PASS-THROUGH P.12 / 24 // FEATURE PASS-THROUGH MATRIX The features that don't pass through are the ones that matter. A gateway that rewrites prompts and normalizes requests across providers has structural difficulty passing cost-optimization and cutting-edge features through cleanly. The practical effect: a company on a gateway typically pays more per unit of wo",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "recommendation for direct stack over ai gateway pattern",
+    "path": "templates/select platform/AI Platform Selection Framework - Drew Burchfield - UPDATED.pdf",
+    "chunk": 18,
+    "content": "For companies without a specific architectural reason to be in the gateway pattern, that value points toward the direct stack. The product landscape will look different in twelve months. New capabilities will arrive. The gap between Tier 1 and Tier 2 may narrow or widen. Choose the stack that lets you reassess without rebuilding. DREW BURCHFIELD \u00b7 PRINCIPAL, METHOD HOUSE \u00b7 DREWBURCHFIELD.COM // \u00a7 08 \u00b7 CLOSING // CLOSING \u00b7 MY READ What I would actually do. P.21 / 24 Everything above is framework. This is the recommendation, stated directly, and",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "anthropic risk management for autonomous coding agents doing code reviews",
+    "path": "templates/transcripts/ciso-agentic-ai-transcript.txt",
+    "chunk": 10,
+    "content": "Do you mind sharing how do you manage the risk for multi author input streams, if. that makes sense? Yeah. So if if, if there's more than one person, involved in any particular task that's going on with, with an AI agent, typically, what we've seen inside of Entropic, you know, we have we have an agent, as I mentioned, agents doing a lot of stuff inside of Anthropic. We have an example of a, agents that are doing, like, autonomous coding. You know, Daria's, spoken publicly about this. If the human is the is the primary author of a code review I",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "thompson service sql table structure for parts cost and revenue",
+    "path": "thompson/discovery/received-2026-06-01/analysis-service-sql.md",
+    "chunk": 5,
+    "content": "| Field (Alias) | Source Column | Meaning | |---------------|--------------|---------| | WONumber | WONO | FK | | WOSegment | WOSGNO | FK | | WO_SegJoin | synthetic | | | PartsSupplier | SOS1 | Supplier code | | PartNumber | PANO20 | Part number (padded) | | PartsCost | UNCS | Unit cost (dealer net) | | PartsSell | UNSEL | Unit sell price | | PartsDescription | DS18 | | | PartsCustomerNumber | CUNO | Customer billed for parts | | OrderQuantity | ORQY | Qty ordered | | DealerNet | calculated | UNCS * ORQY | | Revenue | calculated | UNSEL * ORQY",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "7 copilot habits that save time document location",
+    "path": "thompson/docs/specs/2026-03-27-thompson-copilot-hub-prd.md",
+    "chunk": 22,
+    "content": "\u251c\u2500\u2500 VideoEmbed.astro # Video embed placeholder component \u2502 \u2502 \u2514\u2500\u2500 ManualTemplate.astro # Fill-in-the-blank template component \u2502 \u251c\u2500\u2500 content/ \u2502 \u2502 \u2514\u2500\u2500 docs/ \u2502 \u2502 \u251c\u2500\u2500 index.mdx # Landing page (action-based hero) \u2502 \u2502 \u251c\u2500\u2500 start-here/ \u2502 \u2502 \u2502 \u251c\u2500\u2500 first-15-minutes.mdx \u2502 \u2502 \u2502 \u251c\u2500\u2500 copilot-profile.mdx \u2502 \u2502 \u2502 \u2514\u2500\u2500 habits.mdx # 7 Copilot Habits That Save Time \u2502 \u2502 \u251c\u2500\u2500 daily-work/ \u2502 \u2502 \u2502 \u251c\u2500\u2500 prompt-formula.mdx \u2502 \u2502 \u2502 \u251c\u2500\u2500 teach-your-style.mdx \u2502 \u2502 \u2502 \u251c\u2500\u2500 conversation.mdx \u2502 \u2502 \u2502 \u251c\u2500\u2500 outlook.mdx \u2502 \u2502 \u2502 \u251c\u2500\u2500 teams.mdx \u2502 \u2502 \u2502 \u251c\u2500\u2500 excel.mdx \u2502 \u2502 \u2502 \u251c\u2500\u2500 word.mdx \u2502 \u2502 \u2502 \u251c\u2500\u2500 powerpoin",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "copilot governance framework and green yellow red guidelines",
+    "path": "thompson/docs/specs/2026-03-27-thompson-copilot-hub-prd.md",
+    "chunk": 24,
+    "content": "Microsoft Jan 2026 update (Outlook mobile voice catch-up) | | Start Here: 7 Habits | New synthesis content. \"/\" grounding from Microsoft support docs. Pages/Notebooks from March 2026 GA. Memory management from Microsoft personalization docs | | Tier 4: Copilot Agents | copilot-studio-agents-built.md. agent-instructions-v2.md. agents-ecosystem-insights.md | | Tier 4: Automating Workflows | adoption-playbook-supplement.md (Implementor Role section) | | Tier 4: Governance | adoption-playbook-supplement.md (Governance Framework section, Green/Yello",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "power user examples of copilot in outlook and excel",
+    "path": "thompson/meetings/2026-03-19-copilot-power-users-transcript.md",
+    "chunk": 12,
+    "content": "So, like, what what's the main kinda entry point that you guys typically are using it in? Is it in the applications themselves? Or on the web or you know, what's what's the main kind of area that you do that? And yeah. I'll start there. Them: To me, it's a balance of $50.50. I mean, every application from Excel to email, Outlook, and all that stuff, they're all integrated in there. And I I wherever I'm going, it's it's there waiting if I need to use it. So Me: Yeah. Them: I kinda balance it out. When I'm doing more of the service note side of i",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "using copilot to get actionable items from operations reports",
+    "path": "thompson/meetings/2026-03-19-copilot-power-users-transcript.md",
+    "chunk": 24,
+    "content": "From what I see, especially in operations, is the hardest thing. Right? Like, they've they've tried three or four things that hasn't worked, and they're just they're just there's no need to get into it. But if you could go up there and, if you presented and you showed three reports altogether and then you know, this is what it can produce for you to give you actionable items to attack. Like, you do you can attack your business with actionable items with thirty seconds of review instead of you blow their minds. You know? If you could do that en",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "quote builder thresholds for gross profit margin warnings",
+    "path": "thompson/research/prd-quote-builder.md",
+    "chunk": 21,
+    "content": "| | 7 | Is there a commodity surcharge on any models? | Affects pricing and disclaimers | Trace Hall or COO | **PARTIALLY ADDRESSED.** Included as a toggleable $0-default fee. Need to know if/when it applies. | | 21 | What are the actual GP% thresholds for warnings and approvals? | Prototype uses 15% warn / 5% block as defaults | Trace Hall (VP Sales) | **NEW. OPEN.** | | 22 | Which promos include which service tiers? (Beyond the Q1 2026 GCI bundle) | Needed for promo bundle / included items logic (Section 4.4) | Cat Financial rep / Sales Manag",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "tm&r pricing workbench goals for reducing quote cycle time",
+    "path": "thompson/research/prd-tmr-pricing-pipeline.md",
+    "chunk": 1,
+    "content": "**TM&R Pricing Workbench MVP**: A new PSSR-facing application that aggregates machine data, tracks data readiness, generates AI-assisted draft cost models, and returns approved rates back to the Quote Builder. The two systems communicate through a messaging layer that starts simple (shared queue) and evolves toward email notifications and D365 CRM integration. **Target outcome:** Reduce total quote cycle time from up to 2 weeks to 3-5 business days. Reduce PSSR time-to-price (once all data is in hand) from 1-2 days to same-day. --- ## 2. Proble",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "cat inspect sos fluid analysis and undercarriage inspection results",
+    "path": "thompson/research/prd-tmr-pricing-pipeline.md",
+    "chunk": 11,
+    "content": "s: 0 \u2502 \u2502 Net HP: 268 hp \u2502 Total WO History: 4 \u2502 \u2502 Operating Wt: 82,200 lb \u2502 Major Repairs: None \u2502 \u2502 PM Intervals: \u2502 Warranty Status: Active (exp \u2502 \u2502 250hr, 500hr, 1000hr, \u2502 2027-06-01) \u2502 \u2502 2000hr \u2502 \u2502 \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524 \u2502 FLUID ANALYSIS (S.O.S.) \u2502 INSPECTION RESULTS \u2502 \u2502 \u2502 (Cat Inspect) \u2502 \u2502 Engine Oil: Normal \u2502 \u2502 \u2502 Hydraulic: Normal \u2502 Overall: Good \u2502 \u2502 Coolant: Watch (sodium) \u2502 Undercarriage: 72% remaining \u2502 \u2502 Final Drive: Normal \u2502 Hydraulic Cylinders: Good \u2502 \u2502 Last Sample: 2026-03-01 \u2502 Engine: Good \u2502",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "uproxx daily data fields for red views and watch time",
+    "path": "uproxx/delivery/data-field-inventory.md",
+    "chunk": 3,
+    "content": "| Field | Type | Sample Value | Frequency | Notes | |-------|------|-------------|-----------|-------| | *8 standard dimensions* | | | Daily | | | province_code | STRING | US-TX | Daily | US state codes. Per video per channel per day. | | views, watch_time_minutes, avg_duration | | | Daily | Same metrics as basic_a4 | | card metrics (6 fields) | | | Daily | Card impressions/clicks/rates | | red_views, red_watch_time_minutes | | | Daily | Premium metrics | ### Traffic Sources: content_owner_traffic_source_a3 (17 columns) | Field | Type | Sample",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "commands to store chartmetric api key in gcp secret manager",
+    "path": "uproxx/delivery/engineering-plan-uproxx-data-platform.md",
+    "chunk": 4,
+    "content": "-role=\"roles/bigquery.dataEditor\" gcloud projects add-iam-policy-binding $PROJECT \\ --member=\"serviceAccount:sa-comscore-loader@${PROJECT}.iam.gserviceaccount.com\" \\ --role=\"roles/storage.objectViewer\" ``` ### Task 0.5: Store secrets in Secret Manager **Context:** Chartmetric API key is currently in local `.env`. YouTube API key is in Vitaliy's old project's Secret Manager. Both need to be in the new project's Secret Manager. - [ ] **Step 1: Store Chartmetric API key** ```bash # Read from local .env source /Users/drewburchfield/dev/consulting/u",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "how to set up dbt custom schema name macro for uproxx",
+    "path": "uproxx/delivery/engineering-plan-uproxx-data-platform.md",
+    "chunk": 9,
+    "content": "hooks: - id: check-yaml - id: end-of-file-fixer - id: trailing-whitespace ``` - [ ] **Step 2: Install pre-commit** ```bash uv pip install pre-commit pre-commit install ``` Note: Start lint-only (don't block commits) during Month 1. Switch to blocking in Month 2. ### Task 1.5: Create custom schema macro **Context:** dbt appends dataset names by default (e.g., `staging_staging`). We want clean names: `staging`, `marts`. - [ ] **Step 1: Create macro** File: `uproxx_dbt/macros/generate_schema_name.sql` ```sql {% macro generate_schema_name(custom_sc",
+    "style": "realistic",
+    "source": "gemini"
+  },
+  {
+    "query": "uproxx data architecture pipeline for chartmetric and comscore to bigquery",
+    "path": "uproxx/delivery/tdd-uproxx-data-platform-v3.md",
+    "chunk": 7,
+    "content": "| | CI/CD | GitHub Actions | dbt run + test on schedule and on PR merge. Free tier. | | Monitoring | dbt tests + Slack alerts | Data freshness, uniqueness, not-null checks. Failures notify Slack. | | Dashboards | Hex (Month 1), evaluate alternatives Month 2 | Fix the data layer first. | --- ## 5. Data Architecture ### 5.1 Layer Overview ``` YouTube Data API v3 \u2500\u2500> Cloud Run \u2500\u2500> GCS (raw JSON) \u2500\u2500> BigQuery raw \u2500\u2500\u2510 Chartmetric API \u2500\u2500\u2500\u2500\u2500\u2500> Cloud Run \u2500\u2500> GCS (raw JSON) \u2500\u2500> BigQuery raw \u2500\u2500\u2524 Comscore CSV \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500> GCS upload \u2500\u2500> Cloud Function \u2500\u2500> B",
+    "style": "realistic",
+    "source": "gemini"
   }
 ]

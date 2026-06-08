@@ -69,12 +69,21 @@ async def main():
         o2 = await asyncio.to_thread(rr.rerank, g["query"], [r.content for r in hybrid], 20)
         cfgs["full(hybrid+rerank)"].append(rank_of(g, [hybrid[i] for i, _ in o2]))
     await store.close()
-    n = len(golden)
-    print(f"\n=== ABLATION ({n} braintrust-authored queries) ===")
-    print(f"{'config':22} {'R@1':>5} {'R@5':>5} {'R@10':>5} {'MRR':>6} {'nDCG':>6}")
-    for name, ranks in cfgs.items():
-        m = metrics(ranks, n)
-        print(f"{name:22} {m['R@1']:>5.2f} {m['R@5']:>5.2f} {m['R@10']:>5.2f} {m['MRR']:>6.3f} {m['nDCG']:>6.3f}")
+    styles = [g.get("style", "?") for g in golden]
+    print(f"\n=== ABLATION ({len(golden)} queries across styles) ===")
+
+    def report(label, keep):
+        idxs = [i for i, s in enumerate(styles) if keep(s)]
+        n = len(idxs)
+        print(f"\n--- {label} (n={n}) ---")
+        print(f"{'config':24} {'R@1':>5} {'R@5':>5} {'R@10':>5} {'R@20':>5} {'MRR':>6} {'nDCG':>6}")
+        for name, ranks in cfgs.items():
+            m = metrics([ranks[i] for i in idxs], n)
+            print(f"{name:24} {m['R@1']:>5.2f} {m['R@5']:>5.2f} {m['R@10']:>5.2f} {m['R@20']:>5.2f} {m['MRR']:>6.3f} {m['nDCG']:>6.3f}")
+
+    report("ALL", lambda s: True)
+    report("HARD (adversarial)", lambda s: s == "hard")
+    report("REALISTIC", lambda s: s == "realistic")
 
 
 if __name__ == "__main__":
