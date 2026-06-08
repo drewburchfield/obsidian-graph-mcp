@@ -12,11 +12,12 @@ OPENROUTER_API_KEY="$(grep -E '^OPENROUTER_API_KEY=' .env | head -1 | cut -d= -f
 export POSTGRES_PASSWORD OPENROUTER_API_KEY
 
 export MCP_SERVER_NAME="consulting-graph"
-export EMBEDDING_PROVIDER="ollama"
-export OLLAMA_HOST="http://bigs-mac-mini.tailec95ad.ts.net:11436"  # bigbot MLX server (MagicDNS, survives IP changes)
-export OLLAMA_EMBED_MODEL="qwen3-embedding-4b-mlx"
-export OLLAMA_EMBED_DIMS="2560"
-export EMBEDDING_DIMENSIONS="2560"                    # must match the vector(2560) column
+# All-remote compute on OpenRouter (DB stays local). Qwen3-Embedding-8B (4096d)
+# for embeds + Cohere rerank below. bigbot MLX no longer used.
+export EMBEDDING_PROVIDER="openrouter"
+export OPENROUTER_EMBED_MODEL="qwen/qwen3-embedding-8b"
+export OPENROUTER_EMBED_DIMS="4096"
+export EMBEDDING_DIMENSIONS="4096"                    # must match the vector(4096) column
 export POSTGRES_HOST="localhost"
 export POSTGRES_PORT="5434"
 export POSTGRES_DB="consulting_graph"

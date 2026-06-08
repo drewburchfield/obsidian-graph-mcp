@@ -1,0 +1,17 @@
+{
+  "mode": "FULL PIPELINE (hybrid+rerank)",
+  "n": 66,
+  "R@1": 0.439,
+  "R@5": 0.727,
+  "R@10": 0.818,
+  "R@20": 0.924,
+  "MRR": 0.571,
+  "nDCG@10": 0.624,
+  "misses": [
+    "What is the client's primary goal for the first six months o",
+    "Which external plugins are required to process international",
+    "What is the registered corporate name and location associate",
+    "7 copilot habits that save time document location",
+    "using copilot to get actionable items from operations report"
+  ]
+}

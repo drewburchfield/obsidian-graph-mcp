@@ -53,6 +53,14 @@ def make_embedder():
             dimensions=int(os.getenv("OLLAMA_EMBED_DIMS", "1024")),
             cache_dir=cache_dir,
         )
+    if provider == "openrouter":
+        from .openrouter_embedder import OpenRouterEmbedder
+
+        return OpenRouterEmbedder(
+            model=os.getenv("OPENROUTER_EMBED_MODEL", "qwen/qwen3-embedding-8b"),
+            dimensions=int(os.getenv("OPENROUTER_EMBED_DIMS", "4096")),
+            cache_dir=cache_dir,
+        )
     if provider == "gemini":
         from .gemini_embedder import GeminiEmbedder
 

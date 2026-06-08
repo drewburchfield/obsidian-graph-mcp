@@ -1,0 +1,23 @@
+{
+  "mode": "DENSE-ONLY (baseline)",
+  "n": 66,
+  "R@1": 0.409,
+  "R@5": 0.652,
+  "R@10": 0.773,
+  "R@20": 0.833,
+  "MRR": 0.52,
+  "nDCG@10": 0.576,
+  "misses": [
+    "What is the client's primary goal for the first six months o",
+    "How do the executives justify the cost of the lower-performi",
+    "What is the suggested workaround since built-in URL minifica",
+    "Which external plugins are required to process international",
+    "How can users extract valuable responses from a conversation",
+    "How does the platform determine which new proprietary produc",
+    "What is the registered corporate name and location associate",
+    "7 copilot habits that save time document location",
+    "copilot governance framework and green yellow red guidelines",
+    "using copilot to get actionable items from operations report",
+    "uproxx data architecture pipeline for chartmetric and comsco"
+  ]
+}

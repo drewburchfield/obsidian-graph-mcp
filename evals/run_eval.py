@@ -23,8 +23,8 @@ from dotenv import load_dotenv
 REPO = Path(__file__).resolve().parent.parent
 load_dotenv(REPO / ".env", override=True)
 os.environ.update({
-    "EMBEDDING_PROVIDER": "ollama", "OLLAMA_EMBED_MODEL": "qwen3-embedding-4b-mlx",
-    "OLLAMA_EMBED_DIMS": "2560", "EMBEDDING_DIMENSIONS": "2560",
+    "EMBEDDING_PROVIDER": "openrouter", "OPENROUTER_EMBED_MODEL": "qwen/qwen3-embedding-8b",
+    "OPENROUTER_EMBED_DIMS": "4096", "EMBEDDING_DIMENSIONS": "4096",
     "RERANK_MODEL": "cohere/rerank-v3.5", "RERANK_POOL": "50",
 })
 sys.path.insert(0, str(REPO))
