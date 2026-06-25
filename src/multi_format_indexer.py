@@ -45,9 +45,11 @@ EXCLUDED_DIR_NAMES = {
     ".next",
     ".cache",
     "data",
-    # Standard archive convention across the consulting tree: a directory named
-    # "_archive" holds superseded work at any depth. Never index it.
+    # Archive convention across the consulting tree: directories named "_archive"
+    # (superseded work, any depth) and top-level "archive" (former clients /
+    # lost prospects, added 2026-06-25) hold dead context. Never index either.
     "_archive",
+    "archive",
     # Agent/skill tooling config, not consulting work product.
     ".claude",
 }
@@ -187,11 +189,25 @@ async def index_root(
             total_chunks_indexed += count
             logger.info(f"Indexed {count} chunks (running total: {total_chunks_indexed})")
 
+    # Prune stale rows: anything in the DB whose path is no longer a scanned file
+    # under root (moved, deleted, or now-excluded). Without this, re-indexing only
+    # upserts present files and leaves orphaned entries for old paths.
+    pruned = 0
+    valid_paths = {str(f.relative_to(root)) for f in files}
+    if store.pool is not None and valid_paths:  # never prune against an empty scan
+        async with store.pool.acquire() as conn:
+            db_paths = {r["path"] for r in await conn.fetch("SELECT DISTINCT path FROM notes")}
+        stale = sorted(db_paths - valid_paths)
+        if stale:
+            pruned = await store.delete_notes_by_paths(stale)
+            logger.info(f"Pruned {pruned} stale paths (moved/deleted/excluded)")
+
     summary = {
         "indexed": total_chunks_indexed,
         "files": len(files),
         "chunks": total_chunks_indexed,
         "failed": len(failed),
+        "pruned": pruned,
     }
     if failed:
         logger.warning(
