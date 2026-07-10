@@ -180,6 +180,26 @@ class CorpusSynchronizer:
     async def _reconcile_once(self) -> ReconcileSummary:
         self._write_state("syncing")
         self._reconciling = True
+        try:
+            summary = await self._reconcile_body()
+            self._write_state(
+                "ready" if summary.failed == 0 else "degraded",
+                summary=summary.__dict__,
+            )
+            return summary
+        except Exception as exc:
+            try:
+                self._write_state(
+                    "degraded",
+                    error_type=type(exc).__name__,
+                )
+            except Exception:  # noqa: BLE001 - preserve the original reconciliation failure
+                logger.exception("Failed to publish degraded corpus state")
+            raise
+        finally:
+            self._reconciling = False
+
+    async def _reconcile_body(self) -> ReconcileSummary:
         files = scan_documents(
             str(self.root),
             enabled_extensions=self.enabled_extensions,
@@ -203,9 +223,7 @@ class CorpusSynchronizer:
                         unchanged += 1
                         continue
             try:
-                success = await self.reindex_file(
-                    path, allow_metadata_fallback=stored is None
-                )
+                success = await self.reindex_file(path, allow_metadata_fallback=stored is None)
             except Exception as exc:  # noqa: BLE001 - continue with the remaining corpus
                 logger.exception(f"Unexpected failure indexing {rel_path}: {exc}")
                 success = False
@@ -225,9 +243,4 @@ class CorpusSynchronizer:
             failed=failed,
         )
         logger.info(f"Corpus reconciliation complete: {summary}")
-        self._reconciling = False
-        self._write_state(
-            "ready" if failed == 0 else "degraded",
-            summary=summary.__dict__,
-        )
         return summary

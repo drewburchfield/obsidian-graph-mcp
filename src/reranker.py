@@ -6,42 +6,61 @@ candidate pool and re-scores each (query, chunk) pair for true relevance.
 Verified on the consulting corpus to be the single biggest accuracy lever
 (R@1 0.50 -> 0.77 end-to-end).
 """
+
 from __future__ import annotations
 
 import json
 import os
 import time
+import urllib.parse
 import urllib.request
 
 from loguru import logger
 
 
 class CohereReranker:
-    def __init__(self, model: str | None = None, api_key: str | None = None,
-                 base_url: str | None = None, max_doc_chars: int = 1400):
+    def __init__(
+        self,
+        model: str | None = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        max_doc_chars: int = 1400,
+    ):
         self.model = model or os.getenv("RERANK_MODEL", "cohere/rerank-v3.5")
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY", "")
-        self.url = (base_url or os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")).rstrip("/") + "/rerank"
+        configured_base = base_url or os.getenv(
+            "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+        )
+        parsed_base = urllib.parse.urlparse(configured_base)
+        if parsed_base.scheme not in {"http", "https"} or not parsed_base.netloc:
+            raise ValueError("reranker base URL must use http or https")
+        self.url = configured_base.rstrip("/") + "/rerank"
         self.max_doc_chars = max_doc_chars
         if not self.api_key:
             logger.warning("CohereReranker: no OPENROUTER_API_KEY set; reranking will fail")
 
-    def rerank(self, query: str, documents: list[str], top_n: int | None = None) -> list[tuple[int, float]]:
+    def rerank(
+        self, query: str, documents: list[str], top_n: int | None = None
+    ) -> list[tuple[int, float]]:
         """Return [(original_index, relevance_score), ...] sorted best-first."""
         if not documents:
             return []
-        body = {"model": self.model, "query": query,
-                "documents": [d[: self.max_doc_chars] for d in documents]}
+        body = {
+            "model": self.model,
+            "query": query,
+            "documents": [d[: self.max_doc_chars] for d in documents],
+        }
         if top_n:
             body["top_n"] = top_n
-        req = urllib.request.Request(
-            self.url, json.dumps(body).encode(),
+        req = urllib.request.Request(  # noqa: S310
+            self.url,
+            json.dumps(body).encode(),
             {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
         )
         last = None
         for attempt in range(4):
             try:
-                d = json.load(urllib.request.urlopen(req, timeout=30))
+                d = json.load(urllib.request.urlopen(req, timeout=30))  # noqa: S310
                 if "results" not in d:
                     raise RuntimeError(str(d)[:200])
                 return [(r["index"], r.get("relevance_score", 0.0)) for r in d["results"]]

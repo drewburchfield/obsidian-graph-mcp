@@ -45,6 +45,9 @@ pytestmark = [
 @pytest.mark.asyncio
 async def test_mcp_tools_integration(tmp_path):
     """Comprehensive integration test of all 3 MCP tools."""
+    database = os.getenv("POSTGRES_DB", "obsidian_graph")
+    if not database.endswith(("_test", "_testing")):
+        pytest.fail("integration tests require POSTGRES_DB ending in _test or _testing")
     print("\n🧪 Testing MCP Tools Integration")
     print("=" * 60)
 
@@ -57,6 +60,7 @@ async def test_mcp_tools_integration(tmp_path):
     await store.initialize()
     graph_builder = GraphBuilder(store)
 
+    fixture_paths = []
     try:
         # Setup: Create 3 test notes
         print("\n📝 Setup: Creating test notes...")
@@ -77,6 +81,7 @@ async def test_mcp_tools_integration(tmp_path):
                 "The human mind is a complex system. Philosophers study consciousness and cognition.",
             ),
         ]
+        fixture_paths = [path for path, _, _ in test_notes]
 
         texts = [content for _, _, content in test_notes]
         embeddings = await embedder.embed_batch(texts, input_type="document")
@@ -171,9 +176,9 @@ async def test_mcp_tools_integration(tmp_path):
 
         # Check edge similarities
         for edge in graph["edges"]:
-            assert (
-                0.0 <= edge["similarity"] <= 1.0
-            ), f"Edge similarity {edge['similarity']} out of range"
+            assert 0.0 <= edge["similarity"] <= 1.0, (
+                f"Edge similarity {edge['similarity']} out of range"
+            )
 
         print(f"   - Root: {graph['root']['title']}")
         for node in graph["nodes"][:5]:
@@ -186,6 +191,8 @@ async def test_mcp_tools_integration(tmp_path):
         print("=" * 60)
 
     finally:
+        if fixture_paths:
+            await store.delete_notes_by_paths(fixture_paths)
         await store.close()
 
 

@@ -33,6 +33,10 @@ pytestmark = [
         not os.getenv("VOYAGE_API_KEY"),
         reason="VOYAGE_API_KEY not set - skipping integration tests",
     ),
+    pytest.mark.skipif(
+        not os.getenv("RUN_INTEGRATION_TESTS"),
+        reason="RUN_INTEGRATION_TESTS not set - skipping destructive integration tests",
+    ),
     pytest.mark.slow,
 ]
 
@@ -40,6 +44,9 @@ pytestmark = [
 @pytest_asyncio.fixture
 async def setup_test_data():
     """Set up test database with sample notes."""
+    database = os.getenv("POSTGRES_DB", "obsidian_graph")
+    if not database.endswith(("_test", "_testing")):
+        pytest.fail("integration tests require POSTGRES_DB ending in _test or _testing")
     embedder = VoyageEmbedder()
     store = PostgreSQLVectorStore()
     await store.initialize()
@@ -109,12 +116,14 @@ It contains billions of neurons that form complex networks.
                 )
             )
 
+    paths = [note.path for note in notes]
     await store.upsert_batch(notes)
 
-    yield store, embedder
-
-    # Cleanup
-    await store.close()
+    try:
+        yield store, embedder
+    finally:
+        await store.delete_notes_by_paths(paths)
+        await store.close()
 
 
 # Tests
@@ -127,9 +136,9 @@ async def test_search_notes_similarity_range(setup_test_data):
     results = await store.search(query_embedding, limit=10, threshold=0.0)
 
     for result in results:
-        assert (
-            0.0 <= result.similarity <= 1.0
-        ), f"Similarity {result.similarity} out of range [0.0, 1.0]"
+        assert 0.0 <= result.similarity <= 1.0, (
+            f"Similarity {result.similarity} out of range [0.0, 1.0]"
+        )
 
 
 @pytest.mark.asyncio
@@ -155,9 +164,9 @@ async def test_search_notes_threshold(setup_test_data):
     results = await store.search(query_embedding, limit=10, threshold=0.2)
 
     for result in results:
-        assert (
-            result.similarity >= 0.2
-        ), f"Result {result.title} has similarity {result.similarity} < threshold 0.2"
+        assert result.similarity >= 0.2, (
+            f"Result {result.title} has similarity {result.similarity} < threshold 0.2"
+        )
 
 
 @pytest.mark.asyncio
@@ -180,9 +189,9 @@ async def test_get_similar_notes_finds_related(setup_test_data):
 
     # Should find neural networks and deep learning (semantically related)
     paths = [r.path for r in results]
-    assert any(
-        "neural" in path.lower() or "deep" in path.lower() for path in paths
-    ), "Should find semantically related ML notes"
+    assert any("neural" in path.lower() or "deep" in path.lower() for path in paths), (
+        "Should find semantically related ML notes"
+    )
 
 
 @pytest.mark.asyncio
@@ -248,9 +257,9 @@ async def test_connection_graph_edge_similarity(setup_test_data):
     graph = await graph_builder.build_connection_graph("ml/machine-learning.md", depth=2)
 
     for edge in graph["edges"]:
-        assert (
-            0.0 <= edge["similarity"] <= 1.0
-        ), f"Edge similarity {edge['similarity']} out of range"
+        assert 0.0 <= edge["similarity"] <= 1.0, (
+            f"Edge similarity {edge['similarity']} out of range"
+        )
 
 
 @pytest.mark.asyncio

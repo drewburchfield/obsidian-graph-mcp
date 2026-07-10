@@ -9,6 +9,7 @@ MRR, nDCG@10. A regression test for the deployed system.
   .venv/bin/python evals/run_eval.py            # full pipeline
   .venv/bin/python evals/run_eval.py --baseline # dense-only (no rerank), for delta
 """
+
 import argparse
 import asyncio
 import json
@@ -22,49 +23,93 @@ from dotenv import load_dotenv
 
 REPO = Path(__file__).resolve().parent.parent
 load_dotenv(REPO / ".env", override=True)
-os.environ.update({
-    "EMBEDDING_PROVIDER": "openrouter", "OPENROUTER_EMBED_MODEL": "qwen/qwen3-embedding-8b",
-    "OPENROUTER_EMBED_DIMS": "4096", "EMBEDDING_DIMENSIONS": "4096",
-    "RERANK_MODEL": "cohere/rerank-v3.5", "RERANK_POOL": "50",
-})
+os.environ.update(
+    {
+        "EMBEDDING_PROVIDER": "openrouter",
+        "OPENROUTER_EMBED_MODEL": "qwen/qwen3-embedding-8b",
+        "OPENROUTER_EMBED_DIMS": "4096",
+        "EMBEDDING_DIMENSIONS": "4096",
+        "RERANK_MODEL": "cohere/rerank-v3.5",
+        "RERANK_POOL": "50",
+    }
+)
 sys.path.insert(0, str(REPO))
-from src.server import make_embedder            # noqa: E402
+import src.tools as tools  # noqa: E402
+from src.server import make_embedder  # noqa: E402
 from src.vector_store import PostgreSQLVectorStore  # noqa: E402
-import src.tools as tools                        # noqa: E402
 
-_norm = lambda s: re.sub(r"\s+", " ", s or "").strip().lower()
+
+def _norm(value: str | None) -> str:
+    return re.sub(r"\s+", " ", value or "").strip().lower()
 
 
 async def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--baseline", action="store_true", help="dense-only (rerank off)")
     ap.add_argument("--limit", type=int, default=20)
+    ap.add_argument("--min-gold-coverage", type=float, default=0.75)
+    ap.add_argument("--min-r5", type=float, default=0.65)
+    ap.add_argument("--min-r20", type=float, default=0.85)
     args = ap.parse_args()
     os.environ["CONSULTING_RERANK"] = "0" if args.baseline else "1"
 
     golden = json.load(open(REPO / "evals" / "golden.json"))
-    store = PostgreSQLVectorStore(host="localhost", port=5434, database="consulting_graph",
-                                  user="obsidian", password=os.getenv("POSTGRES_PASSWORD"))
+    store = PostgreSQLVectorStore(
+        host="localhost",
+        port=5434,
+        database="consulting_graph",
+        user="obsidian",
+        password=os.getenv("POSTGRES_PASSWORD"),
+    )
     await store.initialize()
 
     # full gold-chunk content from the live DB -> exact normalized match key
     gold_key = {}
+    active_golden = []
+    unreachable = []
     async with store.pool.acquire() as conn:
         for g in golden:
             row = await conn.fetchrow(
-                "SELECT content FROM notes WHERE path=$1 AND chunk_index=$2", g["path"], g["chunk"])
-            gold_key[(g["path"], g["chunk"])] = _norm(row["content"]) if row else None
+                "SELECT content FROM notes WHERE path=$1 AND chunk_index=$2", g["path"], g["chunk"]
+            )
+            if row:
+                gold_key[(g["path"], g["chunk"])] = _norm(row["content"])
+                active_golden.append(g)
+            else:
+                unreachable.append(g)
 
-    ctx = tools.ToolContext(store=store, embedder=make_embedder(), graph_builder=None, hub_analyzer=None)
+    gold_coverage = len(active_golden) / len(golden) if golden else 0.0
+    if not active_golden or gold_coverage < args.min_gold_coverage:
+        await store.close()
+        print(
+            f"QUALITY GATE FAILED: gold coverage {gold_coverage:.3f} is below "
+            f"{args.min_gold_coverage:.3f}"
+        )
+        return 1
+
+    ctx = tools.ToolContext(
+        store=store, embedder=make_embedder(), graph_builder=None, hub_analyzer=None
+    )
+    # Prime query embeddings in provider-sized batches so a full quality run
+    # does not spend one network round trip per question.
+    await ctx.embedder.embed_batch([g["query"] for g in active_golden], input_type="query")
     ks = [1, 5, 10, 20]
-    hits = {k: 0 for k in ks}
+    hits = dict.fromkeys(ks, 0)
     mrr = ndcg = 0.0
     misses = []
-    for g in golden:
-        res = await tools.search_notes(ctx, {"query": g["query"], "limit": args.limit, "threshold": 0.0})
+    for g in active_golden:
+        res = await tools.search_notes(
+            ctx, {"query": g["query"], "limit": args.limit, "threshold": 0.0}
+        )
         key = gold_key[(g["path"], g["chunk"])]
-        rank = next((i + 1 for i, r in enumerate(res["results"])
-                     if r["path"] == g["path"] and _norm(r["content"]) == key), None)
+        rank = next(
+            (
+                i + 1
+                for i, r in enumerate(res["results"])
+                if r["path"] == g["path"] and _norm(r["content"]) == key
+            ),
+            None,
+        )
         if rank:
             for k in ks:
                 hits[k] += rank <= k
@@ -75,18 +120,38 @@ async def main() -> int:
             misses.append(g["query"][:60])
     await store.close()
 
-    n = len(golden)
+    n = len(active_golden)
     mode = "DENSE-ONLY (baseline)" if args.baseline else "FULL PIPELINE (hybrid+rerank)"
-    print(f"\n=== consulting-graph eval [{mode}] — {n} braintrust-authored queries ===")
+    print(f"\n=== consulting-graph eval [{mode}]: {n} reachable gold queries ===")
+    print(f"  Gold coverage {n}/{len(golden)} ({gold_coverage:.3f})")
     for k in ks:
-        print(f"  Recall@{k:<2} {hits[k]/n:.3f}")
-    print(f"  MRR       {mrr/n:.3f}")
-    print(f"  nDCG@10   {ndcg/n:.3f}")
+        print(f"  Recall@{k:<2} {hits[k] / n:.3f}")
+    print(f"  MRR       {mrr / n:.3f}")
+    print(f"  nDCG@10   {ndcg / n:.3f}")
     if misses:
         print(f"  misses ({len(misses)}): " + "; ".join(misses[:5]))
-    out = {"mode": mode, "n": n, **{f"R@{k}": round(hits[k]/n, 3) for k in ks},
-           "MRR": round(mrr/n, 3), "nDCG@10": round(ndcg/n, 3), "misses": misses}
-    json.dump(out, open(REPO / "evals" / ("results_baseline.json" if args.baseline else "results.json"), "w"), indent=2)
+    out = {
+        "mode": mode,
+        "n": n,
+        "gold_total": len(golden),
+        "gold_coverage": round(gold_coverage, 3),
+        **{f"R@{k}": round(hits[k] / n, 3) for k in ks},
+        "MRR": round(mrr / n, 3),
+        "nDCG@10": round(ndcg / n, 3),
+        "misses": misses,
+        "unreachable": [g["path"] for g in unreachable],
+    }
+    json.dump(
+        out,
+        open(REPO / "evals" / ("results_baseline.json" if args.baseline else "results.json"), "w"),
+        indent=2,
+    )
+    if not args.baseline and (hits[5] / n < args.min_r5 or hits[20] / n < args.min_r20):
+        print(
+            f"  QUALITY GATE FAILED: require R@5 >= {args.min_r5:.2f} "
+            f"and R@20 >= {args.min_r20:.2f}"
+        )
+        return 1
     return 0
 
 

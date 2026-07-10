@@ -359,18 +359,6 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                 self._reindex_locks[file_path] = asyncio.Lock()
             return self._reindex_locks[file_path]
 
-    async def _cleanup_lock(self, file_path: str):
-        """
-        Remove lock after re-indexing completes (prevent memory leak).
-
-        Args:
-            file_path: File path to cleanup lock for
-        """
-        async with self._locks_lock:
-            # Only remove if no pending changes for this file
-            if file_path not in self.pending_changes:
-                self._reindex_locks.pop(file_path, None)
-
     async def _debounced_reindex(self, file_path: str):
         """
         Debounced re-indexing with race-condition-free lock management.
@@ -381,7 +369,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         Thread-Safety:
             - Per-file locking prevents concurrent re-indexes of same file
             - Different files can be re-indexed concurrently
-            - Lock cleanup prevents unbounded memory growth
+            - Stable per-path locks prevent lock replacement races
             - CRITICAL: pending_changes deletion synchronized with cleanup check
         """
         await asyncio.sleep(self.debounce_seconds)
@@ -402,14 +390,9 @@ class ObsidianFileWatcher(FileSystemEventHandler):
 
                 # Clear from pending (synchronized deletion)
                 del self.pending_changes[file_path]
-                # Keep lock in dict (will be cleaned up after re-index)
-
-        # Re-index the file (outside lock to allow other debounce checks)
-        try:
+            # Hold the stable per-path lock across the write. The lock map is
+            # bounded by the number of corpus paths touched in this process.
             await self._reindex_file(file_path)
-        finally:
-            # Cleanup lock (now safe - pending_changes deleted under lock protection)
-            await self._cleanup_lock(file_path)
 
     async def _reindex_file(self, file_path: str):
         """

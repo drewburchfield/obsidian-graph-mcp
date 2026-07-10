@@ -230,7 +230,7 @@ class VoyageEmbedder:
                         # Halve batch size and retry this batch
                         batch_size = max(1, batch_size // 2)
                         logger.warning(
-                            f"Batch too large for token limit, " f"reducing to {batch_size} chunks"
+                            f"Batch too large for token limit, reducing to {batch_size} chunks"
                         )
                         continue  # Retry same position with smaller batch
                     raise
@@ -259,9 +259,9 @@ class VoyageEmbedder:
         with open(self.cache_index_path, "w") as f:
             json.dump(self.cache_index, f)
 
-    def _get_text_hash(self, text: str) -> str:
+    def _get_text_hash(self, text: str, input_type: str) -> str:
         """Generate cache key for text."""
-        return hashlib.sha256(f"{self.model}:{text}".encode()).hexdigest()
+        return hashlib.sha256(f"cache-v2:{self.model}:{input_type}:{text}".encode()).hexdigest()
 
     def _rate_limit_sync(self):
         """Enforce rate limiting (synchronous version for backwards compatibility)."""
@@ -330,9 +330,7 @@ class VoyageEmbedder:
                     )
                     time.sleep(backoff)
                 else:
-                    logger.error(
-                        f"API call failed after {self.max_retries} attempts: " f"{error_msg}"
-                    )
+                    logger.error(f"API call failed after {self.max_retries} attempts: {error_msg}")
 
         raise EmbeddingError(
             f"API call failed after {self.max_retries} attempts: "
@@ -417,7 +415,7 @@ class VoyageEmbedder:
         # Check cache
         if use_cache:
             for i, text in enumerate(texts):
-                text_hash = self._get_text_hash(text)
+                text_hash = self._get_text_hash(text, input_type)
                 if text_hash in self.cache_index:
                     cache_file = Path(self.cache_index[text_hash])
                     if cache_file.exists():
@@ -495,7 +493,7 @@ class VoyageEmbedder:
                     if use_cache:
                         # Cache only non-None embeddings
                         for text, embedding in zip(non_empty, api_embeddings, strict=False):
-                            text_hash = self._get_text_hash(text)
+                            text_hash = self._get_text_hash(text, input_type)
                             cache_file = self.cache_dir / f"{text_hash}.json"
                             with open(cache_file, "w") as f:
                                 json.dump(embedding, f)

@@ -161,8 +161,9 @@ class GeminiEmbedder:
         with open(self.cache_index_path, "w") as f:
             json.dump(self.cache_index, f)
 
-    def _get_text_hash(self, text: str) -> str:
-        return hashlib.sha256(f"{self.model}:{self.dimensions}:{text}".encode()).hexdigest()
+    def _get_text_hash(self, text: str, input_type: str) -> str:
+        value = f"cache-v2:{self.model}:{self.dimensions}:{input_type}:{text}"
+        return hashlib.sha256(value.encode()).hexdigest()
 
     # ------------------------------------------------------------------ #
     # API calls (SDK batch :batchEmbedContents, with retry)
@@ -229,7 +230,7 @@ class GeminiEmbedder:
             if not text or not text.strip():
                 continue
             if use_cache:
-                cached = self.cache_index.get(self._get_text_hash(text))
+                cached = self.cache_index.get(self._get_text_hash(text, input_type))
                 if cached and Path(cached).exists():
                     with open(cached) as f:
                         results[i] = json.load(f)
@@ -242,7 +243,9 @@ class GeminiEmbedder:
         logger.info(f"Embedding {len(to_fetch)} texts (cached: {len(texts) - len(to_fetch)})")
 
         # Split into batch_size groups, run several groups concurrently.
-        groups = [to_fetch[i : i + self.batch_size] for i in range(0, len(to_fetch), self.batch_size)]
+        groups = [
+            to_fetch[i : i + self.batch_size] for i in range(0, len(to_fetch), self.batch_size)
+        ]
         semaphore = asyncio.Semaphore(self.concurrency)
 
         async def run_group(indices: list[int]):
@@ -256,7 +259,7 @@ class GeminiEmbedder:
             for i, vec in zip(indices, vectors, strict=True):
                 results[i] = vec
                 if use_cache:
-                    text_hash = self._get_text_hash(texts[i])
+                    text_hash = self._get_text_hash(texts[i], input_type)
                     cache_file = self.cache_dir / f"{text_hash}.json"
                     with open(cache_file, "w") as f:
                         json.dump(vec, f)

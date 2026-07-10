@@ -71,7 +71,7 @@ def test_env_example_has_placeholder():
         if line.startswith("POSTGRES_PASSWORD="):
             value = line.split("=", 1)[1].strip()
             # Should be a placeholder like "changeme" or empty, not a real password
-            assert len(value) < 32 or value in [
+            assert value in [
                 "changeme",
                 "your_password_here",
                 "your_secure_password_here",
@@ -106,9 +106,9 @@ def test_password_minimum_entropy():
 
     # Should have at least 2 of the 3 types for good entropy
     char_type_count = sum([has_lower, has_upper, has_digit])
-    assert (
-        char_type_count >= 2
-    ), f"Password lacks character diversity (has_lower={has_lower}, has_upper={has_upper}, has_digit={has_digit})"
+    assert char_type_count >= 2, (
+        f"Password lacks character diversity (has_lower={has_lower}, has_upper={has_upper}, has_digit={has_digit})"
+    )
 
 
 def test_password_not_in_common_weak_list():
@@ -159,9 +159,9 @@ def test_gitignore_includes_sensitive_files():
 
     # Check that docker-compose.override.yml is also ignored
     # (may exist from older setups or manual generation)
-    assert (
-        "docker-compose.override" in content or "*.override.yml" in content
-    ), ".gitignore should include docker-compose.override files"
+    assert "docker-compose.override" in content or "*.override.yml" in content, (
+        ".gitignore should include docker-compose.override files"
+    )
 
 
 def test_password_generation_script_exists():
@@ -172,9 +172,9 @@ def test_password_generation_script_exists():
 
     # Check if executable (on Unix-like systems)
     if hasattr(os, "access"):
-        assert os.access(
-            script_path, os.X_OK
-        ), f"Password generation script is not executable: {script_path}"
+        assert os.access(script_path, os.X_OK), (
+            f"Password generation script is not executable: {script_path}"
+        )
 
 
 def test_password_generation_script_syntax():
@@ -196,7 +196,7 @@ def test_password_generation_script_syntax():
 
     # Script should write to .env file (not docker-compose.override.yml)
     assert "ENV_FILE=" in content, "Script should define ENV_FILE variable"
-    assert (
-        "docker-compose.override.yml" not in content
-    ), "Script should not reference docker-compose.override.yml (old pattern)"
+    assert "docker-compose.override.yml" not in content, (
+        "Script should not reference docker-compose.override.yml (old pattern)"
+    )
     assert "sed -i" in content, "Script should use sed to update the .env file in place"

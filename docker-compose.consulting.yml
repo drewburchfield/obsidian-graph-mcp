@@ -40,6 +40,7 @@ services:
       - RERANK_POOL=50
       - CACHE_DIR=/home/mcpuser/.obsidian-graph/cache
       - CORPUS_SYNC_STATE_PATH=/home/mcpuser/.obsidian-graph/sync-state.json
+      - CORPUS_HEALTH_MAX_AGE_SECONDS=120
     volumes:
       - "${CONSULTING_ROOT:-/Users/drewburchfield/dev/consulting}:/corpus:ro"
       - consulting-graph-cache:/home/mcpuser/.obsidian-graph

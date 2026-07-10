@@ -17,6 +17,7 @@ from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
 from .graph_builder import GraphBuilder
 from .hub_analyzer import HubAnalyzer
+from .reranker import CohereReranker
 from .security_utils import validate_note_path_parameter
 from .validation import (
     validate_connection_graph_args,
@@ -25,7 +26,6 @@ from .validation import (
     validate_search_notes_args,
     validate_similar_notes_args,
 )
-from .reranker import CohereReranker
 from .vector_store import PostgreSQLVectorStore
 
 # --- consulting-graph retrieval pipeline (verified: hybrid + Cohere rerank) ---
@@ -108,8 +108,12 @@ async def search_notes(ctx: ToolContext, arguments: dict[str, Any]) -> dict[str,
             rerank_ranked = [pool[idx] for idx, _ in order]
             fused = _rrf(pool, rerank_ranked)[:limit]
             results = [
-                type(r)(path=r.path, title=r.title, content=r.content,
-                        similarity=rerank_score.get(r.content, r.similarity))
+                type(r)(
+                    path=r.path,
+                    title=r.title,
+                    content=r.content,
+                    similarity=rerank_score.get(r.content, r.similarity),
+                )
                 for r in fused
             ]
         except Exception as e:  # noqa: BLE001

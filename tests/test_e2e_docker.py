@@ -23,6 +23,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 pytestmark = [
     pytest.mark.e2e,
     pytest.mark.skipif(
+        not os.getenv("RUN_E2E_TESTS"),
+        reason="RUN_E2E_TESTS not set",
+    ),
+    pytest.mark.skipif(
         not os.getenv("VOYAGE_API_KEY"),
         reason="VOYAGE_API_KEY not set",
     ),
@@ -234,9 +238,9 @@ class TestHubNotes:
         await get_hub_notes(ctx, {"min_connections": 5, "threshold": 0.3, "limit": 10})
         second_ms = (time.time() - start) * 1000
 
-        assert (
-            second_ms < first_ms
-        ), f"Cached call not faster: first={first_ms:.0f}ms, second={second_ms:.0f}ms"
+        assert second_ms < first_ms, (
+            f"Cached call not faster: first={first_ms:.0f}ms, second={second_ms:.0f}ms"
+        )
 
 
 # -- Orphaned Notes --
@@ -326,9 +330,9 @@ class TestDataIntegrity:
         )
         assert len(rows) > 0, "No chunked notes found"
         for row in rows:
-            assert (
-                row["actual"] == row["expected"]
-            ), f"{row['path']}: {row['actual']} chunks vs {row['expected']} expected"
+            assert row["actual"] == row["expected"], (
+                f"{row['path']}: {row['actual']} chunks vs {row['expected']} expected"
+            )
 
     async def test_excluded_paths_not_indexed(self, ctx):
         """Verify exclusion config is enforced."""
@@ -364,6 +368,6 @@ class TestInfrastructure:
         from src.server import _FORMATTERS
         from src.tools import TOOLS
 
-        assert set(TOOLS.keys()) == set(
-            _FORMATTERS.keys()
-        ), f"Mismatch: TOOLS={set(TOOLS.keys())}, FORMATTERS={set(_FORMATTERS.keys())}"
+        assert set(TOOLS.keys()) == set(_FORMATTERS.keys()), (
+            f"Mismatch: TOOLS={set(TOOLS.keys())}, FORMATTERS={set(_FORMATTERS.keys())}"
+        )

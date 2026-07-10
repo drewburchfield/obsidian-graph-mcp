@@ -202,7 +202,12 @@ async def index_root(
                 failed.append({"path": str(file_path), "error": str(e)})
 
         if notes:
-            count = await store.upsert_batch(notes)
+            by_path: dict[str, list[Note]] = {}
+            for note in notes:
+                by_path.setdefault(note.path, []).append(note)
+            count = 0
+            for path, file_notes in by_path.items():
+                count += await store.replace_file_notes(path, file_notes)
             total_chunks_indexed += count
             logger.info(f"Indexed {count} chunks (running total: {total_chunks_indexed})")
 

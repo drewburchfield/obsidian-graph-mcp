@@ -257,6 +257,11 @@ class TestEdgeCases:
         validated = validate_search_notes_args({"query": "test", "threshold": 1.0})
         assert validated["threshold"] == 1.0
 
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), "nan"])
+    def test_threshold_rejects_non_finite_values(self, value):
+        with pytest.raises(ValidationError, match="must be in range"):
+            validate_search_notes_args({"query": "test", "threshold": value})
+
     def test_limit_boundaries(self):
         """Test exact boundary values for limit."""
         # Exactly 1 should work

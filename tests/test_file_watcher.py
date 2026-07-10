@@ -195,8 +195,8 @@ async def test_file_watcher_handles_empty_files(tmp_vault, mock_store, mock_embe
 
 
 @pytest.mark.asyncio
-async def test_lock_cleanup_prevents_memory_leak(tmp_vault, mock_store, mock_embedder):
-    """Test that lock cleanup prevents unbounded memory growth."""
+async def test_lock_map_is_bounded_by_touched_paths(tmp_vault, mock_store, mock_embedder):
+    """Stable locks remain bounded by the finite set of touched corpus paths."""
     loop = asyncio.get_running_loop()
     watcher = ObsidianFileWatcher(
         vault_path=str(tmp_vault),
@@ -215,13 +215,46 @@ async def test_lock_cleanup_prevents_memory_leak(tmp_vault, mock_store, mock_emb
         watcher.pending_changes[file_path] = time.time()
         await watcher._debounced_reindex(file_path)
 
-    # Wait for cleanup
-    await asyncio.sleep(0.2)
+    assert len(watcher._reindex_locks) == 100
 
-    # Lock dict should be small (most locks cleaned up)
-    assert len(watcher._reindex_locks) < 10, (
-        f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
+
+@pytest.mark.asyncio
+async def test_same_path_reindexes_never_overlap(tmp_vault, mock_store, mock_embedder):
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=asyncio.get_running_loop(),
+        debounce_seconds=0,
     )
+    path = str(tmp_vault / "test.md")
+    first_started = asyncio.Event()
+    release_first = asyncio.Event()
+    active = maximum_active = calls = 0
+
+    async def blocking_reindex(file_path):
+        nonlocal active, maximum_active, calls
+        calls += 1
+        active += 1
+        maximum_active = max(maximum_active, active)
+        if calls == 1:
+            first_started.set()
+            await release_first.wait()
+        active -= 1
+
+    watcher._reindex_file = blocking_reindex
+    watcher.pending_changes[path] = time.time()
+    first = asyncio.create_task(watcher._debounced_reindex(path))
+    await first_started.wait()
+    watcher.pending_changes[path] = time.time()
+    second = asyncio.create_task(watcher._debounced_reindex(path))
+    await asyncio.sleep(0)
+
+    assert maximum_active == 1
+    release_first.set()
+    await asyncio.gather(first, second)
+    assert calls == 2
+    assert maximum_active == 1
 
 
 @pytest.mark.asyncio
@@ -252,18 +285,20 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
     # Create event handler
     loop = asyncio.get_running_loop()
     vault_watcher.start(loop)
+    try:
+        # Mock re-index to track calls
+        vault_watcher.event_handler._reindex_file = AsyncMock()
 
-    # Mock re-index to track calls
-    vault_watcher.event_handler._reindex_file = AsyncMock()
+        # Run startup scan
+        await vault_watcher.startup_scan()
 
-    # Run startup scan
-    await vault_watcher.startup_scan()
-
-    # Should have detected stale files (note1.md, note2.md, folder/note3.md)
-    # Empty.md might be skipped
-    assert vault_watcher.event_handler._reindex_file.call_count >= 3, (
-        "Expected at least 3 stale files detected"
-    )
+        # Should have detected stale files (note1.md, note2.md, folder/note3.md)
+        # Empty.md might be skipped
+        assert vault_watcher.event_handler._reindex_file.call_count >= 3, (
+            "Expected at least 3 stale files detected"
+        )
+    finally:
+        vault_watcher.stop()
 
 
 @pytest.mark.asyncio
@@ -294,39 +329,6 @@ async def test_get_lock_for_file_creates_new_locks(tmp_vault, mock_store, mock_e
     lock3 = await watcher._get_lock_for_file("/vault/test2.md")
     assert len(watcher._reindex_locks) == 2
     assert lock3 is not lock1
-
-
-@pytest.mark.asyncio
-async def test_cleanup_lock_removes_unused_locks(tmp_vault, mock_store, mock_embedder):
-    """Test that _cleanup_lock removes locks when no pending changes."""
-    loop = asyncio.get_running_loop()
-    watcher = ObsidianFileWatcher(
-        vault_path=str(tmp_vault),
-        store=mock_store,
-        embedder=mock_embedder,
-        loop=loop,
-        debounce_seconds=1,
-    )
-
-    file_path = "/vault/test.md"
-
-    # Create lock
-    await watcher._get_lock_for_file(file_path)
-    assert len(watcher._reindex_locks) == 1
-
-    # Cleanup with no pending changes
-    await watcher._cleanup_lock(file_path)
-    assert len(watcher._reindex_locks) == 0
-
-    # Create lock again
-    await watcher._get_lock_for_file(file_path)
-
-    # Add pending change
-    watcher.pending_changes[file_path] = time.time()
-
-    # Cleanup should NOT remove lock (pending change exists)
-    await watcher._cleanup_lock(file_path)
-    assert len(watcher._reindex_locks) == 1
 
 
 @pytest.mark.asyncio
@@ -673,20 +675,22 @@ async def test_startup_scan_cleans_orphans(tmp_vault, mock_store, mock_embedder)
     # Create event handler
     loop = asyncio.get_running_loop()
     vault_watcher.start(loop)
+    try:
+        # Mock re-index to not actually do anything
+        vault_watcher.event_handler._reindex_file = AsyncMock()
 
-    # Mock re-index to not actually do anything
-    vault_watcher.event_handler._reindex_file = AsyncMock()
+        # Run startup scan
+        await vault_watcher.startup_scan()
 
-    # Run startup scan
-    await vault_watcher.startup_scan()
-
-    # Should have called delete_notes_by_paths with the orphan path
-    mock_store.delete_notes_by_paths.assert_called()
-    delete_args = mock_store.delete_notes_by_paths.call_args[0][0]
-    assert "deleted_note.md" in delete_args
-    # note1.md and folder/note3.md exist in tmp_vault, so should NOT be deleted
-    assert "note1.md" not in delete_args
-    assert "folder/note3.md" not in delete_args
+        # Should have called delete_notes_by_paths with the orphan path
+        mock_store.delete_notes_by_paths.assert_called()
+        delete_args = mock_store.delete_notes_by_paths.call_args[0][0]
+        assert "deleted_note.md" in delete_args
+        # note1.md and folder/note3.md exist in tmp_vault, so should NOT be deleted
+        assert "note1.md" not in delete_args
+        assert "folder/note3.md" not in delete_args
+    finally:
+        vault_watcher.stop()
 
 
 @pytest.mark.asyncio

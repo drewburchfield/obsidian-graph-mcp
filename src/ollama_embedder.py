@@ -123,8 +123,10 @@ class OllamaEmbedder:
         with open(self.cache_index_path, "w") as f:
             json.dump(self.cache_index, f)
 
-    def _get_text_hash(self, text: str) -> str:
-        return hashlib.sha256(f"{self.model}:{self.dimensions}:{text}".encode()).hexdigest()
+    def _get_text_hash(self, text: str, input_type: str) -> str:
+        prepared = self._prep(text, input_type)
+        value = f"cache-v2:{self.model}:{self.dimensions}:{input_type}:{prepared}"
+        return hashlib.sha256(value.encode()).hexdigest()
 
     def _prep(self, text: str, input_type: str) -> str:
         return f"{QUERY_INSTRUCTION}{text}" if input_type == "query" else text
@@ -172,7 +174,7 @@ class OllamaEmbedder:
             if not text or not text.strip():
                 continue
             if use_cache:
-                cached = self.cache_index.get(self._get_text_hash(text))
+                cached = self.cache_index.get(self._get_text_hash(text, input_type))
                 if cached and Path(cached).exists():
                     with open(cached) as f:
                         v = json.load(f)
@@ -187,7 +189,9 @@ class OllamaEmbedder:
             return results
 
         logger.info(f"Embedding {len(to_fetch)} texts (cached: {len(texts) - len(to_fetch)})")
-        groups = [to_fetch[i : i + self.batch_size] for i in range(0, len(to_fetch), self.batch_size)]
+        groups = [
+            to_fetch[i : i + self.batch_size] for i in range(0, len(to_fetch), self.batch_size)
+        ]
         semaphore = asyncio.Semaphore(self.concurrency)
 
         async with httpx.AsyncClient(timeout=self.api_timeout) as client:
@@ -208,7 +212,7 @@ class OllamaEmbedder:
                         continue
                     results[i] = vec
                     if use_cache:
-                        text_hash = self._get_text_hash(texts[i])
+                        text_hash = self._get_text_hash(texts[i], input_type)
                         cache_file = self.cache_dir / f"{text_hash}.json"
                         with open(cache_file, "w") as f:
                             json.dump(vec, f)

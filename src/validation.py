@@ -8,6 +8,7 @@ Provides centralized validation with:
 - Descriptive error messages
 """
 
+import math
 from typing import Any
 
 from loguru import logger
@@ -134,7 +135,7 @@ def validate_float_range(
         return default
 
     # Range check
-    if value_float < min_val or value_float > max_val:
+    if not math.isfinite(value_float) or value_float < min_val or value_float > max_val:
         raise ValidationError(
             f"Parameter '{param_name}' must be in range [{min_val}, {max_val}], got {value_float}"
         )

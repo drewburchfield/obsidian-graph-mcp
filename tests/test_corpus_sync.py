@@ -1,3 +1,4 @@
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -148,6 +149,20 @@ async def test_overlapping_reconciliation_is_skipped(tmp_path, mock_store, mock_
     mock_store.get_file_metadata.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_reconciliation_failure_clears_active_state(tmp_path, mock_store, mock_embedder):
+    mock_store.get_file_metadata.side_effect = RuntimeError("database unavailable")
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".md"})
+
+    with pytest.raises(RuntimeError, match="database unavailable"):
+        await sync.reconcile()
+
+    assert sync._reconciling is False
+    state = json.loads(sync.state_path.read_text())
+    assert state["status"] == "degraded"
+    assert state["error_type"] == "RuntimeError"
+
+
 def test_healthcheck_reflects_sync_state(tmp_path, monkeypatch):
     import json
 
@@ -162,5 +177,5 @@ def test_healthcheck_reflects_sync_state(tmp_path, monkeypatch):
     assert main() == 1
     state.write_text(json.dumps({"status": "syncing", "updated_at": datetime.now(UTC).isoformat()}))
     assert main() == 0
-    state.write_text(json.dumps({"status": "ready"}))
+    state.write_text(json.dumps({"status": "ready", "updated_at": datetime.now(UTC).isoformat()}))
     assert main() == 0
