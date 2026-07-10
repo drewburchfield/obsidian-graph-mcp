@@ -90,12 +90,25 @@ class CorpusSynchronizer:
         file_path = Path(path)
         if not self.is_eligible(file_path) or not file_path.is_file():
             return False
-        content = convert_file(file_path)
-        if not content:
-            logger.warning(f"Skipping unreadable or empty file: {file_path}")
+        try:
+            content = convert_file(file_path, raise_errors=True)
+        except Exception as exc:  # noqa: BLE001 - preserve the last valid indexed version
+            logger.warning(f"Failed to convert {file_path}: {exc}")
             if not self._reconciling:
                 self._write_state("degraded", last_event="conversion_failed", path=str(file_path))
             return False
+        if not content:
+            if file_path.stat().st_size == 0:
+                logger.warning(f"Skipping empty file: {file_path}")
+                return False
+            rel_path = str(file_path.relative_to(self.root))
+            content = (
+                f"# {file_path.stem}\n\n"
+                f"File: {rel_path}\n"
+                f"Format: {file_path.suffix.lower()}\n\n"
+                "This file contains no extractable text."
+            )
+            logger.info(f"Indexing metadata fallback for {rel_path}")
 
         rel_path = str(file_path.relative_to(self.root))
         try:

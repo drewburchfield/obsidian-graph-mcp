@@ -74,12 +74,31 @@ async def test_conversion_failure_preserves_existing_version(
 ):
     path = tmp_path / "broken.pdf"
     path.write_bytes(b"broken")
-    monkeypatch.setattr("src.corpus_sync.convert_file", lambda _: None)
+
+    def fail_conversion(*args, **kwargs):
+        raise RuntimeError("cannot convert")
+
+    monkeypatch.setattr("src.corpus_sync.convert_file", fail_conversion)
     sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".pdf"})
 
     assert not await sync.reindex_file(path)
     mock_store.replace_file_notes.assert_not_awaited()
     mock_store.delete_notes_by_paths.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_nonempty_document_without_extractable_text_gets_metadata_fallback(
+    tmp_path, mock_store, mock_embedder, monkeypatch
+):
+    path = tmp_path / "scan.pdf"
+    path.write_bytes(b"image-only")
+    monkeypatch.setattr("src.corpus_sync.convert_file", lambda *args, **kwargs: None)
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".pdf"})
+
+    assert await sync.reindex_file(path)
+    content = mock_store.replace_file_notes.await_args.args[1][0].content
+    assert "scan.pdf" in content
+    assert "no extractable text" in content
 
 
 @pytest.mark.asyncio

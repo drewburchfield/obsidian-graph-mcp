@@ -147,7 +147,7 @@ def _convert_tabular(path: Path) -> str | None:
     return "\n\n---\n\n".join(cards) if cards else None
 
 
-def convert_file(path: Path) -> str | None:
+def convert_file(path: Path, *, raise_errors: bool = False) -> str | None:
     """
     Convert a file to embeddable text, or return None to skip it.
 
@@ -166,5 +166,7 @@ def convert_file(path: Path) -> str | None:
             return None
         return _sanitize(text) if text else None
     except Exception as e:  # noqa: BLE001 - resilience: skip bad files, keep going
+        if raise_errors:
+            raise
         logger.warning(f"Failed to convert {path.name}: {e}")
         return None
