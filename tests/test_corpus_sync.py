@@ -82,6 +82,19 @@ async def test_conversion_failure_preserves_existing_version(
     mock_store.delete_notes_by_paths.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_provider_failure_does_not_abort_reconciliation(tmp_path, mock_store, mock_embedder):
+    (tmp_path / "broken.md").write_text("content")
+    mock_embedder.embed_with_chunks.side_effect = RuntimeError("provider unavailable")
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".md"})
+
+    summary = await sync.reconcile()
+
+    assert summary.failed == 1
+    assert summary.scanned == 1
+    mock_store.replace_file_notes.assert_not_awaited()
+
+
 def test_healthcheck_reflects_sync_state(tmp_path, monkeypatch):
     import json
 

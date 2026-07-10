@@ -11,7 +11,6 @@ from pathlib import Path
 from loguru import logger
 
 from .converters import SUPPORTED_EXTS, convert_file
-from .exceptions import EmbeddingError
 from .exclusion import ExclusionFilter, load_exclusion_filter
 from .multi_format_indexer import scan_documents
 from .vector_store import Note, PostgreSQLVectorStore
@@ -103,7 +102,7 @@ class CorpusSynchronizer:
             embeddings, total_chunks = await self.embedder.embed_with_chunks(
                 content, chunk_size=2000, input_type="document"
             )
-        except EmbeddingError as exc:
+        except Exception as exc:  # noqa: BLE001 - one provider failure must not stop reconciliation
             logger.warning(f"Failed to embed {rel_path}: {exc}")
             if not self._reconciling:
                 self._write_state("degraded", last_event="embedding_failed", path=rel_path)
@@ -165,7 +164,11 @@ class CorpusSynchronizer:
                     if delta <= 1:
                         unchanged += 1
                         continue
-            success = await self.reindex_file(path)
+            try:
+                success = await self.reindex_file(path)
+            except Exception as exc:  # noqa: BLE001 - continue with the remaining corpus
+                logger.exception(f"Unexpected failure indexing {rel_path}: {exc}")
+                success = False
             if not success:
                 failed += 1
             elif stored is None:
