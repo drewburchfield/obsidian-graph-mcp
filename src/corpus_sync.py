@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -52,6 +53,7 @@ class CorpusSynchronizer:
             )
         )
         self._reconciling = False
+        self._reconcile_lock = asyncio.Lock()
 
     def _write_state(self, status: str, **details) -> None:
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -161,6 +163,13 @@ class CorpusSynchronizer:
         return True
 
     async def reconcile(self) -> ReconcileSummary:
+        if self._reconcile_lock.locked():
+            logger.info("Corpus reconciliation already running; skipping overlapping poll")
+            return ReconcileSummary(0, 0, 0, 0, 0, 0)
+        async with self._reconcile_lock:
+            return await self._reconcile_once()
+
+    async def _reconcile_once(self) -> ReconcileSummary:
         self._write_state("syncing")
         self._reconciling = True
         files = scan_documents(

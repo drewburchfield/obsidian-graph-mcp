@@ -114,6 +114,19 @@ async def test_provider_failure_does_not_abort_reconciliation(tmp_path, mock_sto
     mock_store.replace_file_notes.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_overlapping_reconciliation_is_skipped(tmp_path, mock_store, mock_embedder):
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".md"})
+    await sync._reconcile_lock.acquire()
+    try:
+        summary = await sync.reconcile()
+    finally:
+        sync._reconcile_lock.release()
+
+    assert summary.scanned == 0
+    mock_store.get_file_metadata.assert_not_awaited()
+
+
 def test_healthcheck_reflects_sync_state(tmp_path, monkeypatch):
     import json
 
