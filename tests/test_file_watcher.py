@@ -104,6 +104,32 @@ async def test_file_watcher_accepts_configured_multiformat_files(
 
 
 @pytest.mark.asyncio
+async def test_multiformat_polling_uses_pruned_periodic_reconciliation(
+    tmp_vault, mock_store, mock_embedder
+):
+    from src.corpus_sync import CorpusSynchronizer
+
+    synchronizer = MagicMock(spec=CorpusSynchronizer)
+    synchronizer.reconcile = AsyncMock()
+    watcher = VaultWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        polling_interval=0,
+        synchronizer=synchronizer,
+        enabled_extensions={".md", ".pdf"},
+    )
+    watcher.use_polling = True
+
+    watcher.start(asyncio.get_running_loop())
+    await asyncio.sleep(0.01)
+    watcher.stop()
+
+    synchronizer.reconcile.assert_awaited()
+    assert watcher.observer is None
+
+
+@pytest.mark.asyncio
 async def test_file_watcher_debounces_rapid_edits(tmp_vault, mock_store, mock_embedder):
     """Test that rapid edits are debounced to a single re-index."""
     loop = asyncio.get_running_loop()

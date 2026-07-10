@@ -543,6 +543,7 @@ class VaultWatcher:
 
         self.observer = None
         self.event_handler = None
+        self._reconcile_task: asyncio.Task | None = None
         self.use_polling = should_use_polling(vault_path)
 
     async def startup_scan(self):
@@ -645,8 +646,16 @@ class VaultWatcher:
 
     def start(self, loop: asyncio.AbstractEventLoop):
         """Start watching the vault for changes."""
-        if self.observer:
+        if self.observer or self._reconcile_task:
             logger.warning("Watcher already running")
+            return
+
+        if self.synchronizer is not None and self.use_polling:
+            self._reconcile_task = loop.create_task(self._periodic_reconcile())
+            logger.success(
+                f"Watching corpus: {self.vault_path} "
+                f"[incremental reconciliation every {self.polling_interval}s]"
+            )
             return
 
         self.event_handler = ObsidianFileWatcher(
@@ -672,8 +681,22 @@ class VaultWatcher:
 
         logger.success(f"Watching vault: {self.vault_path} [{watch_mode}]")
 
+    async def _periodic_reconcile(self):
+        """Reconcile through the pruned corpus scanner at each polling interval."""
+        while True:
+            await asyncio.sleep(self.polling_interval)
+            try:
+                await self.synchronizer.reconcile()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - keep future polling alive
+                logger.exception(f"Periodic corpus reconciliation failed: {exc}")
+
     def stop(self):
         """Stop watching the vault."""
+        if self._reconcile_task:
+            self._reconcile_task.cancel()
+            self._reconcile_task = None
         if self.observer:
             self.observer.stop()
             self.observer.join()
