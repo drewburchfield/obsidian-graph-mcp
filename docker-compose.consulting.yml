@@ -4,8 +4,57 @@
 #
 #   docker compose -f docker-compose.consulting.yml up -d
 #
-# Then run:  python scripts/index_consulting.py
+# The explicit project name keeps this stack separate from docker-compose.yml.
+name: consulting-graph
+
 services:
+  consulting-graph:
+    build: .
+    image: consulting-graph
+    container_name: consulting-graph
+    stdin_open: true
+    tty: true
+    depends_on:
+      consulting-pgvector:
+        condition: service_healthy
+    environment:
+      - MCP_SERVER_NAME=consulting-graph
+      - CORPUS_PATH=/corpus
+      - CORPUS_EXTENSIONS=.md,.markdown,.txt,.pdf,.docx,.pptx,.html,.htm,.csv,.xlsx,.xls
+      - OBSIDIAN_WATCH_ENABLED=true
+      - OBSIDIAN_DEBOUNCE_SECONDS=${CONSULTING_DEBOUNCE_SECONDS:-10}
+      - OBSIDIAN_WATCH_USE_POLLING=true
+      - OBSIDIAN_WATCH_POLLING_INTERVAL=${CONSULTING_POLLING_INTERVAL:-30}
+      - EMBEDDING_PROVIDER=openrouter
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_EMBED_MODEL=qwen/qwen3-embedding-8b
+      - OPENROUTER_EMBED_DIMS=4096
+      - EMBEDDING_DIMENSIONS=4096
+      - POSTGRES_HOST=consulting-pgvector
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=consulting_graph
+      - POSTGRES_USER=obsidian
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - CONSULTING_RERANK=1
+      - RERANK_MODEL=cohere/rerank-v3.5
+      - RERANK_POOL=50
+      - CACHE_DIR=/home/mcpuser/.obsidian-graph/cache
+      - CORPUS_SYNC_STATE_PATH=/home/mcpuser/.obsidian-graph/sync-state.json
+    volumes:
+      - "${CONSULTING_ROOT:-/Users/drewburchfield/dev/consulting}:/corpus:ro"
+      - consulting-graph-cache:/home/mcpuser/.obsidian-graph
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", ".venv/bin/python", "-m", "src.healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
+    restart: unless-stopped
+
   consulting-pgvector:
     image: pgvector/pgvector:pg15
     container_name: consulting-graph-pgvector
@@ -25,5 +74,10 @@ services:
       retries: 5
     restart: unless-stopped
 
+networks:
+  default:
+    name: consulting-graph-network
+
 volumes:
   consulting-postgres-data:
+  consulting-graph-cache:

@@ -18,6 +18,8 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver
 
+from .converters import PASSTHROUGH_EXTS
+from .corpus_sync import CorpusSynchronizer
 from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
 from .exclusion import cleanup_excluded_notes, load_exclusion_filter
@@ -133,6 +135,8 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         embedder: VoyageEmbedder,
         loop: asyncio.AbstractEventLoop,
         debounce_seconds: int = 30,
+        enabled_extensions: set[str] | None = None,
+        synchronizer: CorpusSynchronizer | None = None,
     ):
         """
         Initialize file watcher.
@@ -150,6 +154,8 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         self.embedder = embedder
         self.loop = loop
         self.debounce_seconds = debounce_seconds
+        self.enabled_extensions = enabled_extensions or set(PASSTHROUGH_EXTS & {".md"})
+        self.synchronizer = synchronizer
         self.pending_changes: dict[str, float] = {}
         self.executor = ThreadPoolExecutor(max_workers=1)
 
@@ -180,6 +186,9 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         except ValueError:
             pass  # File outside vault, let it proceed
         return False
+
+    def _is_supported(self, file_path: str) -> bool:
+        return Path(file_path).suffix.lower() in self.enabled_extensions
 
     def _handle_reindex_future_error(self, future: asyncio.Future):
         """
@@ -220,6 +229,9 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         Args:
             file_path: Absolute path to the deleted file
         """
+        if self.synchronizer is not None:
+            await self.synchronizer.remove_file(file_path)
+            return
         try:
             rel_path = str(Path(file_path).relative_to(self.vault_path))
             deleted = await self.store.delete_notes_by_paths([rel_path])
@@ -236,7 +248,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if not event.src_path.endswith(".md"):
+        if not self._is_supported(event.src_path):
             return
 
         file_path = event.src_path
@@ -257,7 +269,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if not event.src_path.endswith(".md"):
+        if not self._is_supported(event.src_path):
             return
 
         file_path = event.src_path
@@ -278,7 +290,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         if event.is_directory:
             return
 
-        if not event.src_path.endswith(".md"):
+        if not self._is_supported(event.src_path):
             return
 
         file_path = event.src_path
@@ -305,8 +317,8 @@ class ObsidianFileWatcher(FileSystemEventHandler):
 
         old_path = event.src_path
         new_path = event.dest_path
-        old_is_md = old_path.endswith(".md")
-        new_is_md = new_path.endswith(".md")
+        old_is_md = self._is_supported(old_path)
+        new_is_md = self._is_supported(new_path)
 
         # Skip if neither source nor destination is markdown
         if not old_is_md and not new_is_md:
@@ -406,6 +418,9 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         Reads content, generates embedding(s), upserts to PostgreSQL.
         Handles large notes with automatic chunking.
         """
+        if self.synchronizer is not None:
+            await self.synchronizer.reindex_file(file_path)
+            return
         try:
             # Read file
             with open(file_path, encoding="utf-8") as f:
@@ -500,6 +515,8 @@ class VaultWatcher:
         embedder: VoyageEmbedder,
         debounce_seconds: int = 30,
         polling_interval: int | None = None,
+        enabled_extensions: set[str] | None = None,
+        synchronizer: CorpusSynchronizer | None = None,
     ):
         """
         Initialize vault watcher.
@@ -515,6 +532,8 @@ class VaultWatcher:
         self.store = store
         self.embedder = embedder
         self.debounce_seconds = debounce_seconds
+        self.enabled_extensions = enabled_extensions or {".md"}
+        self.synchronizer = synchronizer
 
         # Polling interval: param > env var > default 30s
         if polling_interval is not None:
@@ -537,6 +556,9 @@ class VaultWatcher:
         if not self.store.pool:
             logger.warning("Store not initialized, skipping startup scan")
             return
+
+        if self.synchronizer is not None:
+            return await self.synchronizer.reconcile()
 
         try:
             # Clean up any previously indexed notes that are now excluded
@@ -628,7 +650,13 @@ class VaultWatcher:
             return
 
         self.event_handler = ObsidianFileWatcher(
-            self.vault_path, self.store, self.embedder, loop, self.debounce_seconds
+            self.vault_path,
+            self.store,
+            self.embedder,
+            loop,
+            self.debounce_seconds,
+            enabled_extensions=self.enabled_extensions,
+            synchronizer=self.synchronizer,
         )
 
         # Choose observer based on environment

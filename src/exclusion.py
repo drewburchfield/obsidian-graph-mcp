@@ -34,6 +34,38 @@ DEFAULT_EXCLUSIONS = [
     ".claude/",
     ".aider/",
     ".smart-env/",
+    ".agents/",
+    ".braintrust/",
+    ".superpowers/",
+    ".tmp-*/",
+    "~$*",
+    "AGENTS.md",
+    "archive/",
+    "**/archive/",
+    "**/_archive/",
+    "**/.git/",
+    "**/.github/",
+    "**/.claude/",
+    "**/.agents/",
+    "**/.braintrust/",
+    "**/.venv/",
+    "**/venv/",
+    "**/env/",
+    "**/node_modules/",
+    "**/__pycache__/",
+    "**/.pytest_cache/",
+    "**/.mypy_cache/",
+    "**/.ruff_cache/",
+    "**/.wrangler/",
+    "**/.playwright-mcp/",
+    "**/site-packages/",
+    "**/dist/",
+    "**/build/",
+    "**/.next/",
+    "**/.cache/",
+    "**/data/",
+    "uproxx/code/",
+    "**/acme-logistics/",
 ]
 
 CONFIG_FILENAME = ".obsidian-graph.conf"
@@ -70,14 +102,24 @@ class ExclusionFilter:
         rel_path = rel_path.replace("\\", "/")
 
         for pattern in self.all_patterns:
+            # A **/folder/ pattern excludes that directory at any depth.
+            if pattern.startswith("**/") and pattern.endswith("/"):
+                folder_pattern = pattern[3:-1]
+                if any(fnmatch.fnmatch(part, folder_pattern) for part in Path(rel_path).parts[:-1]):
+                    return True
+
             # Direct prefix match for folder patterns (ending with /)
             if pattern.endswith("/"):
                 folder = pattern.rstrip("/")
                 # Check if path starts with this folder
-                if rel_path.startswith(folder + "/") or rel_path == folder:
+                first_component = rel_path.split("/")[0]
+                if (
+                    rel_path.startswith(folder + "/")
+                    or rel_path == folder
+                    or fnmatch.fnmatch(first_component, folder)
+                ):
                     return True
                 # Check if first path component matches (for dotfiles like .obsidian)
-                first_component = rel_path.split("/")[0]
                 if first_component == folder:
                     return True
 

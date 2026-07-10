@@ -126,6 +126,33 @@ class PostgreSQLVectorStore:
                 if not table_exists:
                     logger.warning("Notes table does not exist yet (will be created by schema.sql)")
                 else:
+                    vector_dimensions = await conn.fetchval(
+                        """
+                        SELECT atttypmod
+                        FROM pg_attribute
+                        WHERE attrelid = 'notes'::regclass AND attname = 'embedding'
+                        """
+                    )
+                    if vector_dimensions != EMBEDDING_DIMENSIONS:
+                        note_count = await conn.fetchval("SELECT COUNT(*) FROM notes")
+                        if note_count:
+                            raise VectorStoreError(
+                                f"Database contains vector({vector_dimensions}) data but "
+                                f"EMBEDDING_DIMENSIONS={EMBEDDING_DIMENSIONS}"
+                            )
+                        await conn.execute("DROP INDEX IF EXISTS idx_notes_embedding_cosine")
+                        await conn.execute(
+                            f"ALTER TABLE notes ALTER COLUMN embedding "
+                            f"TYPE vector({EMBEDDING_DIMENSIONS})"  # nosec B608
+                        )
+                        if EMBEDDING_DIMENSIONS <= 2000:
+                            await conn.execute(
+                                """
+                                CREATE INDEX idx_notes_embedding_cosine
+                                ON notes USING hnsw (embedding vector_cosine_ops)
+                                WITH (m = 16, ef_construction = 64)
+                                """
+                            )
                     # Migration: remove trigger that overwrites file mtime (existing databases)
                     await conn.execute(
                         "DROP TRIGGER IF EXISTS trigger_update_notes_modified_at ON notes"
@@ -239,8 +266,12 @@ class PostgreSQLVectorStore:
             async with self.pool.acquire() as conn:
                 rows = await asyncio.wait_for(conn.fetch(q, query_text, limit), timeout=5.0)
             return [
-                SearchResult(path=r["path"], title=r["title"], content=r["content"],
-                             similarity=float(r["rank"]))
+                SearchResult(
+                    path=r["path"],
+                    title=r["title"],
+                    content=r["content"],
+                    similarity=float(r["rank"]),
+                )
                 for r in rows
             ]
         except Exception as e:  # noqa: BLE001
@@ -418,6 +449,62 @@ class PostgreSQLVectorStore:
             raise VectorStoreError("Batch upsert timed out") from e
         except Exception as e:
             raise VectorStoreError(f"Batch upsert failed: {e}") from e
+
+    async def replace_file_notes(self, path: str, notes: list[Note]) -> int:
+        """Atomically replace every stored chunk for one source file."""
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+        for note in notes:
+            if note.path != path:
+                raise VectorStoreError("Every replacement note must match the source path")
+            if len(note.embedding) != EMBEDDING_DIMENSIONS:
+                raise VectorStoreError(
+                    f"Note embedding must be {EMBEDDING_DIMENSIONS} dimensions, "
+                    f"got {len(note.embedding)} for note: {note.path}"
+                )
+
+        query = """
+            INSERT INTO notes (path, title, content, embedding, modified_at,
+                file_size_bytes, chunk_index, total_chunks, last_indexed_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+        """
+        batch_data = [
+            (
+                n.path,
+                n.title,
+                n.content,
+                n.embedding,
+                n.modified_at,
+                n.file_size_bytes,
+                n.chunk_index,
+                n.total_chunks,
+            )
+            for n in notes
+        ]
+        try:
+            async with self.pool.acquire() as conn:
+                async with conn.transaction():
+                    await conn.execute("DELETE FROM notes WHERE path = $1", path)
+                    if batch_data:
+                        await conn.executemany(query, batch_data)
+            return len(notes)
+        except Exception as e:
+            raise VectorStoreError(f"Atomic file replacement failed: {e}") from e
+
+    async def get_file_metadata(self) -> dict[str, tuple[datetime | None, int | None]]:
+        """Return one modification time and size tuple per indexed source path."""
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT path, MAX(modified_at) AS modified_at,
+                       MAX(file_size_bytes) AS file_size_bytes
+                FROM notes
+                GROUP BY path
+                """
+            )
+        return {row["path"]: (row["modified_at"], row["file_size_bytes"]) for row in rows}
 
     async def get_note_count(self) -> int:
         """Get total number of indexed notes."""

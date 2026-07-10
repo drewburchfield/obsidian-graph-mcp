@@ -15,6 +15,8 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool
 
+from .converters import SUPPORTED_EXTS
+from .corpus_sync import CorpusSynchronizer
 from .embedder import VoyageEmbedder
 from .file_watcher import VaultWatcher
 from .graph_builder import GraphBuilder
@@ -79,7 +81,16 @@ async def initialize_server():
 
     logger.info("Initializing Obsidian Graph MCP Server...")
 
-    vault_path = os.getenv("OBSIDIAN_VAULT_PATH", "/vault")
+    vault_path = os.getenv("CORPUS_PATH", os.getenv("OBSIDIAN_VAULT_PATH", "/vault"))
+    configured_extensions = os.getenv("CORPUS_EXTENSIONS", ".md")
+    enabled_extensions = {
+        ext.strip().lower() if ext.strip().startswith(".") else f".{ext.strip().lower()}"
+        for ext in configured_extensions.split(",")
+        if ext.strip()
+    }
+    unsupported = enabled_extensions - SUPPORTED_EXTS
+    if unsupported:
+        raise ValueError(f"Unsupported CORPUS_EXTENSIONS: {sorted(unsupported)}")
 
     # Initialize embedder (provider-configurable: voyage / ollama / gemini)
     embedder = make_embedder()
@@ -114,18 +125,26 @@ async def initialize_server():
     watch_enabled = os.getenv("OBSIDIAN_WATCH_ENABLED", "true").lower() == "true"
 
     if watch_enabled and os.path.exists(vault_path):
+        synchronizer = CorpusSynchronizer(
+            vault_path,
+            store,
+            embedder,
+            enabled_extensions=enabled_extensions,
+        )
         _vault_watcher = VaultWatcher(
             vault_path,
             store,
             embedder,
             debounce_seconds=int(os.getenv("OBSIDIAN_DEBOUNCE_SECONDS", "30")),
+            enabled_extensions=enabled_extensions,
+            synchronizer=synchronizer,
         )
 
         loop = asyncio.get_running_loop()
-        _vault_watcher.start(loop)
         await _vault_watcher.startup_scan()
+        _vault_watcher.start(loop)
 
-        logger.success(f"File watching enabled: {vault_path}")
+        logger.success(f"File watching enabled: {vault_path}; formats={sorted(enabled_extensions)}")
     else:
         logger.info("File watching disabled")
 
@@ -195,7 +214,7 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="get_connection_graph",
             description=(
-                "Build multi-hop connection graph using BFS traversal" " to discover relationships"
+                "Build multi-hop connection graph using BFS traversal to discover relationships"
             ),
             inputSchema={
                 "type": "object",

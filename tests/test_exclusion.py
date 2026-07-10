@@ -92,6 +92,34 @@ class TestExclusionFilter:
         assert not ef.should_exclude("my-trash/note.md")
         assert not ef.should_exclude("trashed/note.md")
 
+    @pytest.mark.parametrize(
+        "path",
+        [
+            ".tmp-w9/document.pdf",
+            ".superpowers/sdd/report.md",
+            "client/.venv/lib/package.txt",
+            "client/node_modules/pkg/readme.md",
+            "client/_archive/old.docx",
+            "thompson/~$draft.docx",
+            "AGENTS.md",
+        ],
+    )
+    def test_consulting_tooling_and_temporary_paths_excluded(self, path):
+        assert ExclusionFilter(custom_patterns=[]).should_exclude(path)
+
+
+def test_scan_documents_respects_enabled_extensions_and_shared_exclusions(tmp_path):
+    from src.multi_format_indexer import scan_documents
+
+    (tmp_path / "keep.md").write_text("keep")
+    (tmp_path / "ignore.txt").write_text("ignore extension")
+    (tmp_path / ".tmp-work").mkdir()
+    (tmp_path / ".tmp-work" / "secret.md").write_text("ignore path")
+
+    found = scan_documents(str(tmp_path), enabled_extensions={".md"})
+
+    assert [path.name for path in found] == ["keep.md"]
+
 
 class TestLoadExclusionFilter:
     """Test config file loading."""

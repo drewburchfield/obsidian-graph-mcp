@@ -83,6 +83,27 @@ async def test_file_watcher_ignores_non_markdown(tmp_vault, mock_store, mock_emb
 
 
 @pytest.mark.asyncio
+async def test_file_watcher_accepts_configured_multiformat_files(
+    tmp_vault, mock_store, mock_embedder
+):
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+        enabled_extensions={".md", ".txt", ".pdf"},
+    )
+
+    txt_file = tmp_vault / "notes.txt"
+    pdf_file = tmp_vault / "document.pdf"
+
+    assert watcher._is_supported(str(txt_file))
+    assert watcher._is_supported(str(pdf_file))
+
+
+@pytest.mark.asyncio
 async def test_file_watcher_debounces_rapid_edits(tmp_vault, mock_store, mock_embedder):
     """Test that rapid edits are debounced to a single re-index."""
     loop = asyncio.get_running_loop()
@@ -172,9 +193,9 @@ async def test_lock_cleanup_prevents_memory_leak(tmp_vault, mock_store, mock_emb
     await asyncio.sleep(0.2)
 
     # Lock dict should be small (most locks cleaned up)
-    assert (
-        len(watcher._reindex_locks) < 10
-    ), f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
+    assert len(watcher._reindex_locks) < 10, (
+        f"Lock dict has {len(watcher._reindex_locks)} entries (memory leak!)"
+    )
 
 
 @pytest.mark.asyncio
@@ -214,9 +235,9 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
 
     # Should have detected stale files (note1.md, note2.md, folder/note3.md)
     # Empty.md might be skipped
-    assert (
-        vault_watcher.event_handler._reindex_file.call_count >= 3
-    ), "Expected at least 3 stale files detected"
+    assert vault_watcher.event_handler._reindex_file.call_count >= 3, (
+        "Expected at least 3 stale files detected"
+    )
 
 
 @pytest.mark.asyncio

@@ -33,6 +33,8 @@ def mock_store():
     store.get_similar_notes = AsyncMock(return_value=[])
     store.upsert_note = AsyncMock(return_value=True)
     store.upsert_batch = AsyncMock(return_value=0)
+    store.replace_file_notes = AsyncMock(return_value=1)
+    store.get_file_metadata = AsyncMock(return_value={})
     store.get_note_count = AsyncMock(return_value=0)
 
     # Methods for exclusion cleanup

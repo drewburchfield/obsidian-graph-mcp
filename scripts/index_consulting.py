@@ -36,8 +36,16 @@ from src.vector_store import PostgreSQLVectorStore  # noqa: E402
 
 
 def make_embedder(cache_dir: str):
-    """Local Ollama (default, free, no quota) or hosted Gemini via env flag."""
-    provider = os.getenv("EMBEDDING_PROVIDER", "ollama").lower()
+    """OpenRouter (default, matches the live graph's 4096d vectors) or gemini/ollama via env flag."""
+    provider = os.getenv("EMBEDDING_PROVIDER", "openrouter").lower()
+    if provider == "openrouter":
+        from src.openrouter_embedder import OpenRouterEmbedder
+
+        return OpenRouterEmbedder(
+            model=os.getenv("OPENROUTER_EMBED_MODEL", "qwen/qwen3-embedding-8b"),
+            dimensions=int(os.getenv("OPENROUTER_EMBED_DIMS", "4096")),
+            cache_dir=cache_dir,
+        )
     if provider == "gemini":
         from src.gemini_embedder import GeminiEmbedder
 
@@ -71,7 +79,10 @@ async def main() -> int:
     parser.add_argument("--db", default=os.getenv("CONSULTING_PG_DB", "consulting_graph"))
     args = parser.parse_args()
 
-    provider = os.getenv("EMBEDDING_PROVIDER", "ollama").lower()
+    provider = os.getenv("EMBEDDING_PROVIDER", "openrouter").lower()
+    if provider == "openrouter" and not os.getenv("OPENROUTER_API_KEY"):
+        logger.error("EMBEDDING_PROVIDER=openrouter but OPENROUTER_API_KEY is not set.")
+        return 1
     if provider == "gemini" and not (os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")):
         logger.error("EMBEDDING_PROVIDER=gemini but GEMINI_API_KEY is not set.")
         return 1

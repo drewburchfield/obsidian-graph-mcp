@@ -27,7 +27,16 @@ from src.vector_store import PostgreSQLVectorStore  # noqa: E402
 
 def make_embedder(cache_dir: str):
     """Must match the provider used to index (same vector space)."""
-    if os.getenv("EMBEDDING_PROVIDER", "ollama").lower() == "gemini":
+    provider = os.getenv("EMBEDDING_PROVIDER", "openrouter").lower()
+    if provider == "openrouter":
+        from src.openrouter_embedder import OpenRouterEmbedder
+
+        return OpenRouterEmbedder(
+            model=os.getenv("OPENROUTER_EMBED_MODEL", "qwen/qwen3-embedding-8b"),
+            dimensions=int(os.getenv("OPENROUTER_EMBED_DIMS", "4096")),
+            cache_dir=cache_dir,
+        )
+    if provider == "gemini":
         from src.gemini_embedder import GeminiEmbedder
 
         return GeminiEmbedder(cache_dir=cache_dir)

@@ -21,6 +21,7 @@ from loguru import logger
 
 from .converters import SUPPORTED_EXTS, convert_file
 from .exceptions import EmbeddingError
+from .exclusion import ExclusionFilter, load_exclusion_filter
 from .vector_store import Note, PostgreSQLVectorStore
 
 # Directory names that never contain authored documents.
@@ -80,29 +81,47 @@ def _is_excluded(rel_path: str, parts: tuple[str, ...]) -> bool:
     return any(frag in rel_path for frag in EXCLUDED_PATH_FRAGMENTS)
 
 
-def scan_documents(root_path: str) -> list[Path]:
+def scan_documents(
+    root_path: str,
+    enabled_extensions: set[str] | None = None,
+    exclusion_filter: ExclusionFilter | None = None,
+) -> list[Path]:
     """Find every supported, non-excluded document under root_path."""
     root = Path(root_path)
     if not root.exists():
         raise FileNotFoundError(f"Root not found: {root_path}")
 
+    enabled_extensions = enabled_extensions or SUPPORTED_EXTS
+    exclusion_filter = exclusion_filter or load_exclusion_filter(root_path)
     found: list[Path] = []
     excluded = 0
-    for path in root.rglob("*"):
-        if not path.is_file() or path.suffix.lower() not in SUPPORTED_EXTS:
-            continue
-        rel = str(path.relative_to(root))
-        if _is_excluded(rel, path.relative_to(root).parts):
-            excluded += 1
-            continue
-        found.append(path)
+    for current_root, dir_names, file_names in os.walk(root):
+        current = Path(current_root)
+        kept_dirs = []
+        for directory in dir_names:
+            directory_path = current / directory
+            rel_directory = str(directory_path.relative_to(root))
+            if exclusion_filter.should_exclude(f"{rel_directory}/placeholder"):
+                excluded += 1
+            else:
+                kept_dirs.append(directory)
+        dir_names[:] = kept_dirs
+
+        for file_name in file_names:
+            path = current / file_name
+            if path.suffix.lower() not in enabled_extensions:
+                continue
+            rel = str(path.relative_to(root))
+            if exclusion_filter.should_exclude(rel):
+                excluded += 1
+                continue
+            found.append(path)
 
     by_ext: dict[str, int] = {}
     for p in found:
         by_ext[p.suffix.lower()] = by_ext.get(p.suffix.lower(), 0) + 1
     logger.info(
-        f"Found {len(found)} documents under {root_path} "
-        f"({excluded} excluded). By type: {by_ext}"
+        f"Found {len(found)} documents under {root_path} ({excluded} excluded). By type: {by_ext}"
     )
     return found
 
@@ -162,9 +181,7 @@ async def index_root(
                     )
                 else:
                     chunks = embedder.chunk_text(content, chunk_size=2000, overlap=0)
-                    for idx, (chunk, emb) in enumerate(
-                        zip(chunks, embeddings_list, strict=False)
-                    ):
+                    for idx, (chunk, emb) in enumerate(zip(chunks, embeddings_list, strict=False)):
                         notes.append(
                             Note(
                                 path=rel_path,

@@ -188,6 +188,37 @@ Indexes entire vault (30-60 min for large vaults). After this, file watching han
 
 ## Configuration
 
+### Consulting dogfood instance
+
+The consulting graph uses the same application-plus-PostgreSQL architecture as the Obsidian graph, but runs as an isolated Compose stack with a multi-format corpus and OpenRouter embeddings.
+
+```bash
+docker compose -f docker-compose.consulting.yml up -d --build
+```
+
+The application mounts `${CONSULTING_ROOT:-/Users/drewburchfield/dev/consulting}` read-only at `/corpus`. It reconciles the corpus at startup, then polls for additions, changes, moves, and deletions every 30 seconds. Synchronization continues without an MCP client connected.
+
+Register the separate MCP client with:
+
+```json
+{
+  "mcpServers": {
+    "consulting-graph": {
+      "command": "/Users/drewburchfield/dev/projects/obsidian-graph-mcp/scripts/run_consulting_mcp.sh",
+      "args": []
+    }
+  }
+}
+```
+
+Check runtime and synchronization health with:
+
+```bash
+docker compose -f docker-compose.consulting.yml ps
+docker logs --tail 100 consulting-graph
+docker exec consulting-graph cat /home/mcpuser/.obsidian-graph/sync-state.json
+```
+
 ### Required Environment Variables
 
 ```bash

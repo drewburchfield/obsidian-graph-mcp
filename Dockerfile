@@ -46,7 +46,7 @@ COPY pyproject.toml uv.lock ./
 # pinned image should never depend on pyproject.toml. `--no-dev` skips dev
 # extras (pytest, ruff, etc.) for a slim runtime image;
 # `--no-install-project` because src/ has not been copied yet at this layer.
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project --extra converters
 
 # Create non-root user
 RUN useradd -m -u 1000 mcpuser
