@@ -141,8 +141,8 @@ async def initialize_server():
         )
 
         loop = asyncio.get_running_loop()
-        await _vault_watcher.startup_scan()
         _vault_watcher.start(loop)
+        await _vault_watcher.startup_scan()
 
         logger.success(f"File watching enabled: {vault_path}; formats={sorted(enabled_extensions)}")
     else:
