@@ -126,5 +126,7 @@ def test_healthcheck_reflects_sync_state(tmp_path, monkeypatch):
     assert main() == 1
     state.write_text(json.dumps({"status": "syncing"}))
     assert main() == 1
+    state.write_text(json.dumps({"status": "syncing", "updated_at": datetime.now(UTC).isoformat()}))
+    assert main() == 0
     state.write_text(json.dumps({"status": "ready"}))
     assert main() == 0

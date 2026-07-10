@@ -2,6 +2,7 @@
 
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -19,7 +20,16 @@ def main() -> int:
         state = json.loads(state_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return 1
-    return 0 if state.get("status") == "ready" else 1
+    if state.get("status") == "ready":
+        return 0
+    if state.get("status") == "syncing":
+        try:
+            updated_at = datetime.fromisoformat(state["updated_at"])
+        except (KeyError, TypeError, ValueError):
+            return 1
+        age = datetime.now(UTC) - updated_at
+        return 0 if age.total_seconds() <= 300 else 1
+    return 1
 
 
 if __name__ == "__main__":

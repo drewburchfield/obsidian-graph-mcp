@@ -82,7 +82,9 @@ class CorpusSynchronizer:
         except ValueError:
             return 0
         removed = await self.store.delete_notes_by_paths([rel_path])
-        if not self._reconciling:
+        if self._reconciling:
+            self._write_state("syncing", last_event="remove", path=rel_path)
+        else:
             self._write_state("ready", last_event="remove", path=rel_path)
         return removed
 
@@ -94,7 +96,9 @@ class CorpusSynchronizer:
             content = convert_file(file_path, raise_errors=True)
         except Exception as exc:  # noqa: BLE001 - preserve the last valid indexed version
             logger.warning(f"Failed to convert {file_path}: {exc}")
-            if not self._reconciling:
+            if self._reconciling:
+                self._write_state("syncing", last_event="conversion_failed", path=str(file_path))
+            else:
                 self._write_state("degraded", last_event="conversion_failed", path=str(file_path))
             return False
         if not content:
@@ -117,7 +121,9 @@ class CorpusSynchronizer:
             )
         except Exception as exc:  # noqa: BLE001 - one provider failure must not stop reconciliation
             logger.warning(f"Failed to embed {rel_path}: {exc}")
-            if not self._reconciling:
+            if self._reconciling:
+                self._write_state("syncing", last_event="embedding_failed", path=rel_path)
+            else:
                 self._write_state("degraded", last_event="embedding_failed", path=rel_path)
             return False
 
@@ -147,7 +153,9 @@ class CorpusSynchronizer:
             )
             return False
         await self.store.replace_file_notes(rel_path, notes)
-        if not self._reconciling:
+        if self._reconciling:
+            self._write_state("syncing", last_event="index", path=rel_path)
+        else:
             self._write_state("ready", last_event="index", path=rel_path)
         logger.info(f"Indexed {rel_path} ({len(notes)} chunks)")
         return True
