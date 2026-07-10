@@ -102,6 +102,27 @@ async def test_nonempty_document_without_extractable_text_gets_metadata_fallback
 
 
 @pytest.mark.asyncio
+async def test_new_unconvertible_document_gets_metadata_fallback(
+    tmp_path, mock_store, mock_embedder, monkeypatch
+):
+    path = tmp_path / "malformed.pdf"
+    path.write_bytes(b"malformed")
+
+    def fail_conversion(*args, **kwargs):
+        raise KeyError("DescendantFonts")
+
+    monkeypatch.setattr("src.corpus_sync.convert_file", fail_conversion)
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".pdf"})
+
+    summary = await sync.reconcile()
+
+    assert summary.added == 1
+    assert summary.failed == 0
+    content = mock_store.replace_file_notes.await_args.args[1][0].content
+    assert "malformed.pdf" in content
+
+
+@pytest.mark.asyncio
 async def test_provider_failure_does_not_abort_reconciliation(tmp_path, mock_store, mock_embedder):
     (tmp_path / "broken.md").write_text("content")
     mock_embedder.embed_with_chunks.side_effect = RuntimeError("provider unavailable")

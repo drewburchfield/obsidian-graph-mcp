@@ -90,7 +90,9 @@ class CorpusSynchronizer:
             self._write_state("ready", last_event="remove", path=rel_path)
         return removed
 
-    async def reindex_file(self, path: str | Path) -> bool:
+    async def reindex_file(
+        self, path: str | Path, *, allow_metadata_fallback: bool = False
+    ) -> bool:
         file_path = Path(path)
         if not self.is_eligible(file_path) or not file_path.is_file():
             return False
@@ -98,11 +100,17 @@ class CorpusSynchronizer:
             content = convert_file(file_path, raise_errors=True)
         except Exception as exc:  # noqa: BLE001 - preserve the last valid indexed version
             logger.warning(f"Failed to convert {file_path}: {exc}")
-            if self._reconciling:
-                self._write_state("syncing", last_event="conversion_failed", path=str(file_path))
-            else:
-                self._write_state("degraded", last_event="conversion_failed", path=str(file_path))
-            return False
+            if not allow_metadata_fallback:
+                if self._reconciling:
+                    self._write_state(
+                        "syncing", last_event="conversion_failed", path=str(file_path)
+                    )
+                else:
+                    self._write_state(
+                        "degraded", last_event="conversion_failed", path=str(file_path)
+                    )
+                return False
+            content = None
         if not content:
             if file_path.stat().st_size == 0:
                 logger.warning(f"Skipping empty file: {file_path}")
@@ -195,7 +203,9 @@ class CorpusSynchronizer:
                         unchanged += 1
                         continue
             try:
-                success = await self.reindex_file(path)
+                success = await self.reindex_file(
+                    path, allow_metadata_fallback=stored is None
+                )
             except Exception as exc:  # noqa: BLE001 - continue with the remaining corpus
                 logger.exception(f"Unexpected failure indexing {rel_path}: {exc}")
                 success = False

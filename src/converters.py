@@ -76,6 +76,35 @@ def _convert_markitdown(path: Path) -> str | None:
     return text or None
 
 
+def _convert_pdf(path: Path) -> str | None:
+    """Extract PDF text with MarkItDown, then pdfium for malformed font structures."""
+    try:
+        return _convert_markitdown(path)
+    except Exception as primary_error:  # noqa: BLE001 - pdfium handles pdfminer failures
+        logger.warning(f"Primary PDF parser failed for {path.name}; trying pdfium: {primary_error}")
+
+    import pypdfium2 as pdfium
+
+    document = pdfium.PdfDocument(str(path))
+    pages: list[str] = []
+    try:
+        for page in document:
+            text_page = page.get_textpage()
+            try:
+                text = (text_page.get_text_range() or "").strip()
+                if text:
+                    pages.append(text)
+            finally:
+                close = getattr(text_page, "close", None)
+                if close:
+                    close()
+    finally:
+        close = getattr(document, "close", None)
+        if close:
+            close()
+    return "\n\n---\n\n".join(pages) or None
+
+
 def _table_card(df, title: str, sheet: str | None = None) -> str:
     """Build a deterministic, high-signal description of a dataframe."""
     rows, cols = df.shape
@@ -158,6 +187,8 @@ def convert_file(path: Path, *, raise_errors: bool = False) -> str | None:
     try:
         if ext in PASSTHROUGH_EXTS:
             text = _convert_passthrough(path)
+        elif ext == ".pdf":
+            text = _convert_pdf(path)
         elif ext in MARKITDOWN_EXTS:
             text = _convert_markitdown(path)
         elif ext in TABULAR_EXTS:
