@@ -72,13 +72,17 @@ def extract_title(file_path: Path) -> str:
     return file_path.stem
 
 
-async def index_vault(vault_path: str, batch_size: int = 100):
+async def index_vault(vault_path: str, batch_size: int = 100) -> bool:
     """
     Index entire Obsidian vault.
 
     Args:
         vault_path: Path to Obsidian vault
         batch_size: Number of notes to process per batch
+
+    Returns:
+        True if every file indexed successfully, False if any failed
+        (failed files keep their previous embeddings in the database)
     """
     logger.info(f"Starting vault indexing: {vault_path}")
 
@@ -100,8 +104,9 @@ async def index_vault(vault_path: str, batch_size: int = 100):
         md_files = scan_vault(vault_path, exclusion_filter)
         vault_root = Path(vault_path)
 
-        # Track failures across all batches
-        all_failed_notes = []
+        # Track failures and successful upserts across all batches
+        all_failed_notes: list[dict[str, str]] = []
+        run_upserted = 0
 
         # Process in batches
         for i in range(0, len(md_files), batch_size):
@@ -142,6 +147,8 @@ async def index_vault(vault_path: str, batch_size: int = 100):
 
                 except Exception as e:
                     logger.error(f"Error reading {file_path}: {e}")
+                    rel_path = str(file_path.relative_to(vault_root))
+                    all_failed_notes.append({"path": rel_path, "error": f"read failed: {e}"})
 
             if not notes_data:
                 logger.warning(f"No valid notes in batch {i // batch_size + 1}")
@@ -162,8 +169,8 @@ async def index_vault(vault_path: str, batch_size: int = 100):
                     )
                 except EmbeddingError as e:
                     logger.error(f"Failed to embed {note_data['path']}: {e}")
-                    batch_failed_notes.append({"path": note_data["path"], "error": str(e)})
-                    all_failed_notes.append({"path": note_data["path"], "error": str(e)})
+                    batch_failed_notes.append({"path": str(note_data["path"]), "error": str(e)})
+                    all_failed_notes.append({"path": str(note_data["path"]), "error": str(e)})
                     continue
 
                 # Create Note object(s)
@@ -205,13 +212,15 @@ async def index_vault(vault_path: str, batch_size: int = 100):
             # Insert into PostgreSQL
             if notes:
                 count = await store.upsert_batch(notes)
+                run_upserted += count
                 logger.info(f"Indexed {count} note chunks")
 
         # Final stats
         total_notes = await store.get_note_count()
         cache_stats = embedder.get_cache_stats()
 
-        # Report failures if any
+        # Report failures: failed files keep their previous embeddings, so a
+        # partial run must not claim success (or claim the corpus model changed)
         if all_failed_notes:
             logger.warning(
                 f"Indexing completed with {len(all_failed_notes)} failures "
@@ -220,12 +229,21 @@ async def index_vault(vault_path: str, batch_size: int = 100):
             )
             if len(all_failed_notes) > 10:
                 logger.warning(f"  ... and {len(all_failed_notes) - 10} more failures")
-            logger.info("Run indexer again to retry failed files, or check Voyage API key/quota")
+            logger.error(
+                f"Indexing incomplete: {run_upserted} note chunks re-indexed with "
+                f"{embedder.model}, but {len(all_failed_notes)} files failed and keep "
+                f"their previous embeddings. Run the indexer again to retry, or check "
+                f"Voyage API key/quota."
+            )
+            return False
 
+        await store.set_metadata("embedding_model", embedder.model)
         logger.success(
-            f"Indexing complete! {total_notes} notes indexed successfully. "
+            f"Indexing complete! {run_upserted} note chunks indexed with {embedder.model} "
+            f"({total_notes} total in database). "
             f"Cache: {cache_stats['total_cached']} embeddings, {cache_stats['cache_size_mb']} MB"
         )
+        return True
 
     finally:
         await store.close()
@@ -234,7 +252,9 @@ async def index_vault(vault_path: str, batch_size: int = 100):
 async def main():
     """Run initial indexing."""
     vault_path = os.getenv("OBSIDIAN_VAULT_PATH", "/vault")
-    await index_vault(vault_path)
+    ok = await index_vault(vault_path)
+    if not ok:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

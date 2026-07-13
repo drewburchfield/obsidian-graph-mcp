@@ -1,11 +1,11 @@
 """
-Voyage Context-3 embedding client for Obsidian notes.
+Voyage contextualized embedding client for Obsidian notes (voyage-context-4).
 
 Supports automatic chunking for large notes (>32k tokens):
 - Small notes (<30k tokens): Embedded whole
 - Large notes (>30k tokens): Split into 2000-char chunks, embedded with context preserved
-- Uses voyage-context-3 contextualized_embed for multi-chunk notes
-- Zero overlap (voyage-context-3 maintains context without overlap)
+- Uses contextualized_embed for multi-chunk notes
+- Zero overlap (contextualized models maintain context without overlap)
 - JSON caching for security
 
 Security features:
@@ -50,9 +50,18 @@ def _is_token_limit_error(e: Exception) -> bool:
     )
 
 
+def _is_invalid_model_error(e: Exception) -> bool:
+    """Check if an exception is a deterministic invalid-model error (not retryable)."""
+    error_lower = str(e).lower()
+    return "model" in error_lower and any(
+        marker in error_lower
+        for marker in ("invalid", "not found", "does not exist", "unsupported")
+    )
+
+
 class VoyageEmbedder:
     """
-    Voyage Context-3 embedding client with caching and rate limiting.
+    Voyage contextualized embedding client with caching and rate limiting.
 
     Generates 1024-dimensional embeddings for Obsidian notes.
     """
@@ -60,7 +69,7 @@ class VoyageEmbedder:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "voyage-context-3",
+        model: str | None = None,
         cache_dir: str = "./data/embeddings_cache",
         batch_size: int = 128,
         requests_per_minute: int = 300,
@@ -72,7 +81,7 @@ class VoyageEmbedder:
 
         Args:
             api_key: Voyage API key (or from VOYAGE_API_KEY env)
-            model: Voyage model (default: voyage-context-3)
+            model: Voyage model (or from VOYAGE_MODEL env; default: voyage-context-4)
             cache_dir: Directory for caching embeddings
             batch_size: Texts per API batch
             requests_per_minute: Rate limit
@@ -84,7 +93,8 @@ class VoyageEmbedder:
             raise ValueError("VOYAGE_API_KEY environment variable required")
 
         self.client = voyageai.Client(api_key=self.api_key)
-        self.model = model
+        # Empty/whitespace values fall through to the default, matching compose ${VAR:-} semantics
+        self.model = (model or os.getenv("VOYAGE_MODEL") or "").strip() or "voyage-context-4"
         self.batch_size = batch_size
         self.requests_per_minute = requests_per_minute
         self.api_timeout = api_timeout
@@ -104,7 +114,7 @@ class VoyageEmbedder:
         # Thread pool for running sync API calls with timeout
         self._executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="voyage_api")
 
-        logger.success(f"VoyageEmbedder initialized: {model}")
+        logger.success(f"VoyageEmbedder initialized: {self.model}")
 
     def chunk_text(self, text: str, chunk_size: int = 2000, overlap: int = 0) -> list[str]:
         """
@@ -113,7 +123,7 @@ class VoyageEmbedder:
         Args:
             text: Text to chunk
             chunk_size: Characters per chunk (default: 2000)
-            overlap: Character overlap between chunks (default: 0 for voyage-context-3)
+            overlap: Character overlap between chunks (default: 0; contextualized models keep context)
 
         Returns:
             List of text chunks
@@ -312,6 +322,17 @@ class VoyageEmbedder:
                         cause=e,
                     ) from e
 
+                # Invalid model names are deterministic, don't retry
+                if _is_invalid_model_error(e):
+                    logger.error(
+                        f"Invalid model '{self.model}' (not retryable): {error_msg}. "
+                        f"Check VOYAGE_MODEL."
+                    )
+                    raise EmbeddingError(
+                        f"Invalid model '{self.model}': {error_msg}",
+                        cause=e,
+                    ) from e
+
                 # Check if it's a rate limit error (429)
                 if "429" in str(e) or "rate" in str(e).lower():
                     # Exponential backoff: 2^attempt seconds (1, 2, 4, ...)
@@ -463,7 +484,7 @@ class VoyageEmbedder:
                         new_embeddings.extend([None] * len(batch))
                         continue
 
-                    # voyage-context-3 requires contextualized_embed with nested lists
+                    # Contextualized models require contextualized_embed with nested lists
                     # Each note is a single-element list (whole note, not chunked)
                     nested_inputs = [[text] for text in non_empty]
 

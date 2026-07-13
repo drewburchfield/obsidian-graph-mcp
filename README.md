@@ -6,7 +6,7 @@ Semantic knowledge graph engine for markdown vaults. Discovers hidden connection
 
 ## Overview
 
-Obsidian Graph builds a semantic knowledge graph of your markdown vault, discovering relationships between notes that go beyond keywords and explicit links. It embeds your notes as vectors using Voyage Context-3, stores them in PostgreSQL+pgvector, and provides tools for semantic search, multi-hop graph traversal, hub detection, and orphan analysis.
+Obsidian Graph builds a semantic knowledge graph of your markdown vault, discovering relationships between notes that go beyond keywords and explicit links. It embeds your notes as vectors using Voyage Context-4, stores them in PostgreSQL+pgvector, and provides tools for semantic search, multi-hop graph traversal, hub detection, and orphan analysis.
 
 Designed for Obsidian vaults but works with any folder of markdown files. Connects to any AI app or harness compatible with the Model Context Protocol (MCP).
 
@@ -17,7 +17,7 @@ Designed for Obsidian vaults but works with any folder of markdown files. Connec
 - **Hub Analysis**: Identify highly connected conceptual anchors (MOC candidates)
 - **Orphan Detection**: Find isolated insights that need integration
 - **Auto-Indexing**: Automatic file watching with 30-second debounce
-- **Superior Quality**: Voyage Context-3 (1024d) vs typical 384d embeddings
+- **Superior Quality**: Voyage Context-4 (1024d) vs typical 384d embeddings
 
 ## Architecture
 
@@ -47,7 +47,7 @@ Designed for Obsidian vaults but works with any folder of markdown files. Connec
 └────────────────────────────────────────────┘
 ```
 
-- **Embeddings**: Voyage Context-3 (1024 dimensions, contextualized)
+- **Embeddings**: Voyage Context-4 (1024 dimensions, contextualized)
 - **Vector Store**: PostgreSQL 15+ with pgvector HNSW indexing
 - **Performance**: 0.9ms search (555x better than target), <2s graph building
 - **File Watching**: Watchdog with polling mode for cloud sync compatibility
@@ -57,7 +57,7 @@ Designed for Obsidian vaults but works with any folder of markdown files. Connec
 
 ### Overview
 
-All tools use **semantic similarity** via 1024-dimensional Voyage Context-3 embeddings. Similarity scores range from 0.0 (unrelated) to 1.0 (identical). Default threshold is 0.5 (clear connection).
+All tools use **semantic similarity** via 1024-dimensional Voyage Context-4 embeddings. Similarity scores range from 0.0 (unrelated) to 1.0 (identical). Default threshold is 0.5 (clear connection).
 
 **How it works:**
 1. Notes are embedded as vectors in 1024-dimensional space
@@ -78,7 +78,7 @@ All tools use **semantic similarity** via 1024-dimensional Voyage Context-3 embe
 ### Methodology Details
 
 **search_notes:**
-- Generates query embedding using Voyage Context-3
+- Generates query embedding using Voyage Context-4
 - Performs cosine similarity search against all note embeddings
 - Returns top-k most similar notes above threshold
 - HNSW index enables O(log n) search complexity
@@ -117,7 +117,7 @@ All tools use **semantic similarity** via 1024-dimensional Voyage Context-3 embe
 - Chunking algorithm breaks at sentence boundaries (`. ` or `\n\n`) for readability
 - Chunk sizes vary (1800-2200 chars) to preserve sentence integrity
 - Embedded in batches of 60 chunks (preserves context)
-- Voyage Context-3 maintains semantic coherence across chunks
+- Voyage Context-4 maintains semantic coherence across chunks
 - Each chunk stored separately with `chunk_index`
 - Search returns individual chunks (can aggregate by path)
 
@@ -138,7 +138,7 @@ This server requires a Voyage AI API key for generating embeddings:
    - Add a payment method (credit card)
    - **Why**: Without payment, rate limit is only 3 RPM (unusable)
    - **With payment**: 300 RPM rate limit unlocked
-4. **Free tier**: Voyage Context-3 includes 200M free tokens (one-time per account):
+4. **Free tier**: Voyage Context-4 includes 200M free tokens (one-time per account, per model):
    - First 200M tokens are FREE
    - Sufficient for indexing ~50,000 notes
    - After free tier: ~$0.12 per 1M tokens
@@ -169,7 +169,7 @@ docker-compose up -d
 
 4. **Initial indexing** (first time only):
 ```bash
-docker exec -i obsidian-graph python -m src.indexer
+docker exec -i obsidian-graph .venv/bin/python -m src.indexer
 ```
 Indexes entire vault (30-60 min for large vaults). After this, file watching handles incremental updates.
 
@@ -179,12 +179,13 @@ Indexes entire vault (30-60 min for large vaults). After this, file watching han
   "mcpServers": {
     "obsidian-graph": {
       "command": "docker",
-      "args": ["exec", "-i", "obsidian-graph", "python", "-m", "src.server"],
+      "args": ["exec", "-i", "-e", "OBSIDIAN_WATCH_ENABLED=false", "obsidian-graph", ".venv/bin/python", "-m", "src.server"],
       "disabled": false
     }
   }
 }
 ```
+The watcher is disabled for MCP sessions because the main container process already watches the vault; without this, every connected client would spawn a duplicate watcher. `scripts/run_vault_mcp.sh` wraps the same command if you prefer pointing your client at a script.
 
 ## Configuration
 
@@ -359,7 +360,7 @@ Validated metrics:
 | Graph building (depth=3) | <2s | <2s | ✅ On target |
 | Hub/orphan queries | <100ms | <100ms | ✅ Materialized |
 | Similarity range | [0.0-1.0] | [0.0-1.0] | ✅ Validated |
-| Embedding quality | 1024-dim | 1024-dim | ✅ Voyage Context-3 |
+| Embedding quality | 1024-dim | 1024-dim | ✅ Voyage Context-4 |
 
 **Performance Note**: Metrics measured on development vault (~500 notes, M1 MacBook Pro). Actual performance depends on vault size, hardware (CPU/RAM/SSD), and database configuration. HNSW indexing provides O(log n) search, so performance degrades gracefully with vault size.
 
@@ -381,7 +382,7 @@ grep POSTGRES_ .env
 ```
 
 ### "Note not found" errors
-- Ensure initial indexing completed: `docker exec -i obsidian-graph python -m src.indexer`
+- Ensure initial indexing completed: `docker exec -i obsidian-graph .venv/bin/python -m src.indexer`
 - Check vault path is mounted: `docker exec -i obsidian-graph ls /vault`
 
 ### File changes not detected
@@ -396,12 +397,19 @@ grep POSTGRES_ .env
 
 ### Running Tests
 
-```bash
-# Quick validation
-docker exec -i obsidian-graph python test_e2e.py
+Tests run on the host (the Docker image ships without dev dependencies or the `tests/` directory):
 
-# Unit tests (requires 300 RPM rate limits)
-docker exec -i obsidian-graph pytest tests/ -v
+```bash
+# Full test suite
+uv sync --extra dev
+uv run pytest tests/ -v
+
+# Docker end-to-end tests (requires the stack running and VOYAGE_API_KEY)
+uv run pytest tests/test_e2e_docker.py -v -s
+
+# Standalone E2E regression suite against the running stack (read-only, 35 checks)
+docker cp scripts/run_e2e_tests.py obsidian-graph:/tmp/
+docker exec -w /app obsidian-graph .venv/bin/python /tmp/run_e2e_tests.py
 ```
 
 ### Rebuilding
@@ -428,7 +436,7 @@ docker exec -it obsidian-graph-pgvector psql -U obsidian -d obsidian_graph
 
 | Feature | mcp-obsidian | obsidian-graph |
 |---------|--------------|----------------|
-| Embeddings | 384-dim (all-MiniLM-L6-v2) | 1024-dim (Voyage Context-3) |
+| Embeddings | 384-dim (all-MiniLM-L6-v2) | 1024-dim (Voyage Context-4) |
 | Vector Store | ChromaDB | PostgreSQL+pgvector |
 | Tools | 2 (search, reindex) | 5 (search, similar, graph, hubs, orphans) |
 | Search perf | Unknown | 0.9ms validated |

@@ -19,7 +19,7 @@ from pgvector.asyncpg import register_vector
 
 from .exceptions import DatabaseError
 
-# Expected embedding dimensions for voyage-context-3
+# Expected embedding dimensions for voyage-context-4
 EMBEDDING_DIMENSIONS = 1024
 
 
@@ -130,6 +130,16 @@ class PostgreSQLVectorStore:
                     )
                     await conn.execute("DROP FUNCTION IF EXISTS update_modified_at()")
 
+                # Migration: corpus-level metadata (e.g. which embedding model built the index);
+                # created here so existing databases get it without re-running schema.sql
+                await conn.execute("""
+                    CREATE TABLE IF NOT EXISTS index_metadata (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """)
+
             logger.info(f"PostgreSQL connected: {self.max_connections} max connections")
 
         except asyncpg.PostgresError as e:
@@ -152,6 +162,36 @@ class PostgreSQLVectorStore:
             await self.pool.close()
             self.pool = None
             logger.debug("PostgreSQL connection pool closed")
+
+    async def get_metadata(self, key: str) -> str | None:
+        """Read a corpus-level metadata value (e.g. 'embedding_model')."""
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+
+        async with self.pool.acquire() as conn:
+            return await self._with_timeout(
+                conn.fetchval("SELECT value FROM index_metadata WHERE key = $1", key)
+            )
+
+    async def set_metadata(self, key: str, value: str) -> None:
+        """Write a corpus-level metadata value."""
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+
+        async with self.pool.acquire() as conn:
+            await self._with_timeout(
+                conn.execute(
+                    """
+                    INSERT INTO index_metadata (key, value, updated_at)
+                    VALUES ($1, $2, CURRENT_TIMESTAMP)
+                    ON CONFLICT (key) DO UPDATE SET
+                        value = EXCLUDED.value,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    key,
+                    value,
+                )
+            )
 
     async def search(
         self, query_embedding: list[float], limit: int = 10, threshold: float = 0.5
