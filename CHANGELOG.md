@@ -93,6 +93,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A failed connection-count refresh is no longer recorded as a completed algorithm migration; it retries on the next hub/orphan call and logs an actionable error
 - Integration tests clean up their fixture rows and `test_e2e_docker.py` requires an explicit `RUN_E2E_TESTS` opt-in, so test runs can no longer pollute a live database
 
+### Changed
+- **Chunk replacement is now atomic**: `upsert_batch` deletes stale chunk rows in the same transaction as the upsert, closing the crash window between the two; the watcher and indexer route all re-index writes through it
+- Live-deployment test suites no longer assert single-sample wall-clock latencies (nondeterministic under load): generous hang-detection ceilings replace them, and the hub-cache check spies on the refresh instead of comparing two timings
+- Watcher concurrency tests await every task they spawn and assert exactly-once semantics (the stress test previously tolerated 20% lost re-indexes and could never surface task exceptions)
+- Integration test fixture closes its pool even when setup fails before yielding
+- `pytest-cov` declared in dev extras (the README coverage command required it undeclared); test commands documented with `uv run` + `uv sync --extra dev`
+
 ### Planned
 - Separate src/ into engine/ and mcp/ packages
 - Additional embedding provider support

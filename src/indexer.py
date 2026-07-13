@@ -209,16 +209,12 @@ async def index_vault(vault_path: str, batch_size: int = 100) -> bool:
                             )
                         )
 
-            # Insert into PostgreSQL
+            # Insert into PostgreSQL (upsert_batch atomically replaces each
+            # path's full chunk set, deleting stale chunk rows)
             if notes:
                 count = await store.upsert_batch(notes)
                 run_upserted += count
                 logger.info(f"Indexed {count} note chunks")
-
-                # Remove chunk rows beyond each note's new chunk count: a note
-                # that shrank would otherwise keep stale chunks searchable
-                for note_path, chunk_total in {n.path: n.total_chunks for n in notes}.items():
-                    await store.delete_stale_chunks(note_path, chunk_total)
 
         # Final stats
         total_notes = await store.get_note_count()

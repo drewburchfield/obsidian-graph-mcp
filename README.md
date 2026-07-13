@@ -293,14 +293,16 @@ This server implements multiple security layers to protect your vault:
 pytest tests/test_security*.py -v
 
 # Input validation tests
-pytest tests/test_validation.py -v
+uv run pytest tests/test_validation.py -v
 
 # Race condition tests
-pytest tests/test_race_conditions.py -v
+uv run pytest tests/test_race_conditions.py -v
 
-# All tests with coverage
-pytest tests/ --cov=src --cov-report=html
+# All tests with coverage (dev extras include pytest-cov)
+uv run pytest tests/ --cov=src --cov-report=html
 ```
+
+All commands require dev dependencies: `uv sync --extra dev`.
 
 ## Usage Examples
 
