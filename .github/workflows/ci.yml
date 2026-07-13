@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -44,7 +44,7 @@ jobs:
           case "$(command -v pip)" in "$HOME"/.safe-chain/shims/*) echo "ok: $(command -v pip)";; *) echo "safe-chain pip shim not on PATH" >&2; exit 1;; esac
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
         with:
           version: "0.5.11"
 
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -103,7 +103,7 @@ jobs:
           case "$(command -v pip)" in "$HOME"/.safe-chain/shims/*) echo "ok: $(command -v pip)";; *) echo "safe-chain pip shim not on PATH" >&2; exit 1;; esac
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
         with:
           version: "0.5.11"
 
@@ -137,7 +137,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 

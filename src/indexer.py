@@ -105,7 +105,7 @@ async def index_vault(vault_path: str, batch_size: int = 100) -> bool:
         vault_root = Path(vault_path)
 
         # Track failures and successful upserts across all batches
-        all_failed_notes = []
+        all_failed_notes: list[dict[str, str]] = []
         run_upserted = 0
 
         # Process in batches
@@ -169,8 +169,8 @@ async def index_vault(vault_path: str, batch_size: int = 100) -> bool:
                     )
                 except EmbeddingError as e:
                     logger.error(f"Failed to embed {note_data['path']}: {e}")
-                    batch_failed_notes.append({"path": note_data["path"], "error": str(e)})
-                    all_failed_notes.append({"path": note_data["path"], "error": str(e)})
+                    batch_failed_notes.append({"path": str(note_data["path"]), "error": str(e)})
+                    all_failed_notes.append({"path": str(note_data["path"]), "error": str(e)})
                     continue
 
                 # Create Note object(s)
