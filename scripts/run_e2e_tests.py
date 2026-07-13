@@ -5,8 +5,9 @@ Standalone E2E regression tests for Obsidian Graph.
 Runs inside Docker without pytest. Tests all tools, validation,
 security, data integrity, and performance baselines.
 
-Usage:
-    docker exec -w /app obsidian-graph python3 scripts/run_e2e_tests.py
+Usage (the image ships only src/, so copy the script in first):
+    docker cp scripts/run_e2e_tests.py obsidian-graph:/tmp/
+    docker exec -w /app obsidian-graph .venv/bin/python /tmp/run_e2e_tests.py
 
 Or locally (with postgres port-mapped):
     POSTGRES_HOST=localhost python3 scripts/run_e2e_tests.py

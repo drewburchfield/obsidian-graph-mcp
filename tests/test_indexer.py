@@ -204,3 +204,31 @@ async def test_index_vault_handles_large_notes_with_chunking(tmp_path, mock_stor
             large_notes = [n for n in notes if "large" in n.path]
             assert len(large_notes) == 3
             assert all(n.total_chunks == 3 for n in large_notes)
+
+
+@pytest.mark.asyncio
+async def test_index_vault_reports_unreadable_files_as_failures(
+    tmp_path, mock_store, mock_embedder
+):
+    """A file that cannot be read must fail the run, not vanish silently."""
+    from src.indexer import index_vault
+
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    (vault / "good.md").write_text("# Good note\n\nReadable content.")
+    unreadable = vault / "unreadable.md"
+    unreadable.write_text("# Secret\n\nCannot be read.")
+    unreadable.chmod(0o000)
+
+    try:
+        with (
+            patch("src.indexer.VoyageEmbedder", return_value=mock_embedder),
+            patch("src.indexer.PostgreSQLVectorStore", return_value=mock_store),
+        ):
+            ok = await index_vault(str(vault))
+
+        assert ok is False
+        # A failed run must not record the corpus embedding model
+        mock_store.set_metadata.assert_not_called()
+    finally:
+        unreadable.chmod(0o644)

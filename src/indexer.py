@@ -147,6 +147,8 @@ async def index_vault(vault_path: str, batch_size: int = 100) -> bool:
 
                 except Exception as e:
                     logger.error(f"Error reading {file_path}: {e}")
+                    rel_path = str(file_path.relative_to(vault_root))
+                    all_failed_notes.append({"path": rel_path, "error": f"read failed: {e}"})
 
             if not notes_data:
                 logger.warning(f"No valid notes in batch {i // batch_size + 1}")

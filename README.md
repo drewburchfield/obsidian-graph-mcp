@@ -406,6 +406,10 @@ uv run pytest tests/ -v
 
 # Docker end-to-end tests (requires the stack running and VOYAGE_API_KEY)
 uv run pytest tests/test_e2e_docker.py -v -s
+
+# Standalone E2E regression suite against the running stack (read-only, 35 checks)
+docker cp scripts/run_e2e_tests.py obsidian-graph:/tmp/
+docker exec -w /app obsidian-graph .venv/bin/python /tmp/run_e2e_tests.py
 ```
 
 ### Rebuilding
