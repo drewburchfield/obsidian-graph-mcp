@@ -216,5 +216,38 @@ class TestGraphBuilderErrors:
         assert "Similarity computation failed" in str(exc_info.value)
 
 
+@pytest.mark.asyncio
+async def test_initialize_closes_pool_when_verification_fails(monkeypatch):
+    """A failed post-creation verification must close the pool, not leak it."""
+    from unittest.mock import patch
+
+    from src.vector_store import PostgreSQLVectorStore, VectorStoreError
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchval = AsyncMock(return_value=False)  # pgvector "missing"
+
+    class MockAcquire:
+        async def __aenter__(self):
+            return mock_conn
+
+        async def __aexit__(self, *args):
+            pass
+
+    mock_pool = MagicMock()
+    mock_pool.acquire = MagicMock(return_value=MockAcquire())
+    mock_pool.close = AsyncMock()
+
+    async def fake_create_pool(*args, **kwargs):
+        return mock_pool
+
+    store = PostgreSQLVectorStore(password="test-password")
+    with patch("src.vector_store.asyncpg.create_pool", side_effect=fake_create_pool):
+        with pytest.raises(VectorStoreError):
+            await store.initialize()
+
+    mock_pool.close.assert_awaited_once()
+    assert store.pool is None
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

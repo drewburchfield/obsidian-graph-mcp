@@ -34,7 +34,8 @@ class HubAnalyzer:
 
     Performance:
         - Refresh is O(N²) where N = number of notes
-        - Triggered when >50% of notes have stale connection_count
+        - Triggered when >50% of notes have stale connection_count, or once
+          when the counting algorithm version changes (_COUNT_ALGO_VERSION)
         - Awaited inline so counts are fresh before queries return
     """
 
@@ -196,7 +197,13 @@ class HubAnalyzer:
                     await self._do_refresh(threshold)
 
         except Exception as e:
-            logger.warning(f"Failed to check count freshness: {e}")
+            # The version key stays unset on failure, so the migration retries
+            # on the next call rather than locking in wrong counts
+            logger.error(
+                f"Connection-count freshness check failed: {e}. "
+                f"Hub/orphan results may reflect counts from the old algorithm "
+                f"until a refresh succeeds."
+            )
 
     async def _do_refresh(self, threshold: float):
         """
@@ -283,4 +290,8 @@ class HubAnalyzer:
             logger.success(f"Connection count refresh complete ({total_notes} notes)")
 
         except Exception as e:
+            # Re-raise so callers can distinguish a failed refresh from a
+            # completed one; the algo-version migration must not be recorded
+            # as done when the refresh did not finish
             logger.error(f"Connection count refresh failed: {e}")
+            raise

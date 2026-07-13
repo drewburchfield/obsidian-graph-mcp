@@ -71,6 +71,15 @@ class TestSearchNotesValidation:
         with pytest.raises(ValidationError, match="threshold.*0.0.*1.0"):
             validate_search_notes_args({"query": "test", "threshold": 2.0})
 
+    @pytest.mark.parametrize(
+        "value",
+        [float("nan"), "nan", float("inf"), float("-inf"), "inf"],
+    )
+    def test_rejects_non_finite_threshold(self, value):
+        """NaN compares False against both bounds, so it must be rejected explicitly."""
+        with pytest.raises(ValidationError, match="threshold"):
+            validate_search_notes_args({"query": "test", "threshold": value})
+
     def test_applies_defaults(self):
         """Missing optional parameters get defaults."""
         validated = validate_search_notes_args({"query": "test"})

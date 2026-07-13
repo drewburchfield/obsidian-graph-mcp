@@ -174,6 +174,33 @@ class PostgreSQLVectorStore:
             self.pool = None
             logger.debug("PostgreSQL connection pool closed")
 
+    async def delete_stale_chunks(self, path: str, total_chunks: int) -> int:
+        """
+        Delete chunk rows at or beyond total_chunks for a path.
+
+        When a note shrinks on re-index (e.g. 3 chunks -> 1), the upsert only
+        rewrites chunks 0..total_chunks-1; without this, the old higher-index
+        chunks stay searchable with stale content and counts.
+
+        Returns:
+            Number of stale chunk rows deleted
+        """
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+
+        async with self.pool.acquire() as conn:
+            result = await self._with_timeout(
+                conn.execute(
+                    "DELETE FROM notes WHERE path = $1 AND chunk_index >= $2",
+                    path,
+                    total_chunks,
+                )
+            )
+            deleted = int(result.split()[-1]) if result else 0
+            if deleted:
+                logger.debug(f"Deleted {deleted} stale chunk rows for {path}")
+            return deleted
+
     async def get_metadata(self, key: str) -> str | None:
         """Read a corpus-level metadata value (e.g. 'embedding_model')."""
         if not self.pool:
@@ -297,15 +324,20 @@ class PostgreSQLVectorStore:
         try:
             async with self.pool.acquire() as conn:
                 exists = await self._with_timeout(
-                    conn.fetchval("SELECT EXISTS(SELECT 1 FROM notes WHERE path = $1)", note_path),
+                    conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM notes "
+                        "WHERE path = $1 AND embedding IS NOT NULL)",
+                        note_path,
+                    ),
                     timeout=5.0,
                 )
                 if not exists:
-                    raise VectorStoreError(f"Note not found: {note_path}")
+                    raise VectorStoreError(f"Note not found (or has no embedding): {note_path}")
 
                 # Any-chunk-to-any-chunk comparison, collapsed to the best match
-                # per target note, with self excluded in SQL. Single connection
-                # and query, so a one-connection pool cannot deadlock.
+                # per target note, with self excluded in SQL. One pooled
+                # connection for both statements, so a one-connection pool
+                # cannot deadlock.
                 query = """
                     SELECT path, title, content, similarity FROM (
                         SELECT DISTINCT ON (n2.path)
@@ -324,9 +356,8 @@ class PostgreSQLVectorStore:
                     ORDER BY similarity DESC, path
                     LIMIT $3
                 """
-                rows = await asyncio.wait_for(
-                    conn.fetch(query, note_path, 1.0 - threshold, limit),
-                    timeout=10.0,
+                rows = await self._with_timeout(
+                    conn.fetch(query, note_path, 1.0 - threshold, limit)
                 )
                 return [
                     SearchResult(
@@ -440,6 +471,7 @@ class PostgreSQLVectorStore:
                     embedding = EXCLUDED.embedding,
                     modified_at = EXCLUDED.modified_at,
                     file_size_bytes = EXCLUDED.file_size_bytes,
+                    total_chunks = EXCLUDED.total_chunks,
                     last_indexed_at = CURRENT_TIMESTAMP,
                     connection_count = 0
             """

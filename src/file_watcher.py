@@ -355,9 +355,14 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             file_path: File path to cleanup lock for
         """
         async with self._locks_lock:
-            # Only remove if no pending changes for this file
+            # Only remove if no pending changes for this file AND nothing is
+            # holding or waiting on the lock: popping a live lock would let a
+            # later debounce mint a fresh one and re-index the file
+            # concurrently with a still-running reindex
             if file_path not in self.pending_changes:
-                self._reindex_locks.pop(file_path, None)
+                lock = self._reindex_locks.get(file_path)
+                if lock is not None and not lock.locked() and not getattr(lock, "_waiters", None):
+                    self._reindex_locks.pop(file_path, None)
 
     async def _debounced_reindex(self, file_path: str):
         """
@@ -456,6 +461,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                     total_chunks=1,
                 )
                 await self.store.upsert_note(note)
+                await self.store.delete_stale_chunks(rel_path, 1)
                 logger.info(f"Re-indexed: {rel_path}")
             else:
                 # Chunked note - create one Note per chunk
@@ -477,6 +483,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                     )
                     await self.store.upsert_note(note)
 
+                await self.store.delete_stale_chunks(rel_path, total_chunks)
                 logger.info(f"Re-indexed {total_chunks} chunks: {rel_path}")
 
         except Exception as e:

@@ -121,6 +121,53 @@ async def test_file_watcher_debounces_rapid_edits(tmp_vault, mock_store, mock_em
 
 
 @pytest.mark.asyncio
+async def test_debounce_resleeps_when_timestamp_refreshed_without_new_task(
+    tmp_vault, mock_store, mock_embedder
+):
+    """
+    A refreshed pending timestamp with NO new coroutine must still be indexed.
+
+    Regression test for the lost-event bug: the old code returned early on
+    "a more recent change is pending", assuming another coroutine existed for
+    it; when none did (timer jitter, or this exact scenario), the file stayed
+    unindexed until its next change.
+    """
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=0.3,
+    )
+
+    test_file = tmp_vault / "resleep.md"
+    test_file.write_text("# Test")
+    file_path = str(test_file)
+
+    reindex_count = 0
+
+    async def track_reindex(path):
+        nonlocal reindex_count
+        reindex_count += 1
+
+    watcher._reindex_file = track_reindex
+
+    # One event, one coroutine
+    watcher.pending_changes[file_path] = time.monotonic()
+    task = asyncio.create_task(watcher._debounced_reindex(file_path))
+
+    # Mid-debounce, refresh the timestamp WITHOUT spawning a new coroutine
+    await asyncio.sleep(0.15)
+    watcher.pending_changes[file_path] = time.monotonic()
+
+    # The single coroutine must re-sleep the remainder and then index
+    await asyncio.wait_for(task, timeout=2.0)
+    assert reindex_count == 1, f"Expected 1 re-index, got {reindex_count}"
+    assert file_path not in watcher.pending_changes
+
+
+@pytest.mark.asyncio
 async def test_file_watcher_handles_empty_files(tmp_vault, mock_store, mock_embedder):
     """Test that empty files are handled gracefully."""
     loop = asyncio.get_running_loop()

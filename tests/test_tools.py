@@ -114,9 +114,12 @@ It contains billions of neurons that form complex networks.
     try:
         yield store, embedder
     finally:
-        # Remove fixture rows so runs never pollute the configured database
-        await store.delete_notes_by_paths([path for path, _, _ in test_notes_content])
-        await store.close()
+        # Remove fixture rows so runs never pollute the configured database;
+        # close the pool even if the cleanup delete fails
+        try:
+            await store.delete_notes_by_paths([path for path, _, _ in test_notes_content])
+        finally:
+            await store.close()
 
 
 # Tests
