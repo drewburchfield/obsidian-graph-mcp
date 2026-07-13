@@ -39,6 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Embedding model upgraded to `voyage-context-4`** (from `voyage-context-3`): same 1024-dim vectors and `contextualized_embed` API, better retrieval quality (+2.08% chunk-level NDCG@10 per Voyage), lower price ($0.12/1M vs $0.18/1M), and its own 200M free-token tier
+  - New `VOYAGE_MODEL` env var selects the model (default: `voyage-context-4`); resolved inside `VoyageEmbedder` so the server and indexer always agree
+  - **Migration**: embeddings from different models are not comparable. After upgrading, run a full re-index: `docker exec -i obsidian-graph .venv/bin/python -m src.indexer`. The embedding cache is keyed by model name and invalidates itself.
+- Docs: `docker exec` examples now use the image's `.venv/bin/python` (the system `python` has no dependencies installed)
+- Docs: MCP client config now disables the file watcher (`OBSIDIAN_WATCH_ENABLED=false`) for exec'd stdio sessions; the main container process already owns watching
+- Added `scripts/run_vault_mcp.sh` launcher for MCP clients (wraps the docker exec invocation)
+- Added `.dockerignore` so host `__pycache__`, `.venv`, and `.env` never leak into the image
+
 ### Added
 - **Cloud Sync Support**: Automatic polling mode for iCloud, Google Drive, Dropbox, and OneDrive vaults
   - Auto-detection of cloud-synced paths on macOS

@@ -7,13 +7,13 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Main notes table with vector embeddings
--- Supports chunking for large notes (voyage-context-3 pattern)
+-- Supports chunking for large notes (voyage-context-4 pattern)
 CREATE TABLE IF NOT EXISTS notes (
     id SERIAL PRIMARY KEY,
     path TEXT NOT NULL,                      -- Vault-relative path (can have multiple chunks)
     title TEXT NOT NULL,                     -- Note title (from filename or frontmatter)
     content TEXT NOT NULL,                   -- Chunk content (or full note if unchunked)
-    embedding vector(1024),                  -- Voyage Context-3 embedding (1024 dimensions)
+    embedding vector(1024),                  -- Voyage Context-4 embedding (1024 dimensions)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     modified_at TIMESTAMP WITH TIME ZONE,
     file_size_bytes INTEGER,

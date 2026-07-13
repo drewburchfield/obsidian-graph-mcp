@@ -19,7 +19,7 @@ from pgvector.asyncpg import register_vector
 
 from .exceptions import DatabaseError
 
-# Expected embedding dimensions for voyage-context-3
+# Expected embedding dimensions for voyage-context-4
 EMBEDDING_DIMENSIONS = 1024
 
 

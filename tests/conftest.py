@@ -66,7 +66,7 @@ def mock_embedder():
             "total_cached": 0,
             "cache_size_mb": 0.0,
             "cache_dir": "/tmp/cache",
-            "model": "voyage-context-3",
+            "model": "voyage-context-4",
         }
     )
 

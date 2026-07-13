@@ -289,7 +289,7 @@ get_orphaned_notes({
 
 Notes exceeding 32,000 tokens are automatically chunked:
 - **Chunk size:** 2000 characters
-- **Overlap:** 0 (voyage-context-3 maintains context)
+- **Overlap:** 0 (voyage-context-4 maintains context)
 - **Storage:** Each chunk as separate row with `chunk_index`
 - **Search:** Returns individual chunks
 - **Graph:** Chunks treated as separate nodes
@@ -433,7 +433,7 @@ Start high, go lower:
 ## Limitations
 
 1. **Oversized notes:** Notes >32k tokens (~120k chars) are automatically chunked
-   - Split into 2000-char chunks with context preserved via voyage-context-3
+   - Split into 2000-char chunks with context preserved via voyage-context-4
    - Dynamic batch sizing adapts to chunk density
 
 2. **Empty notes:** Skipped during indexing

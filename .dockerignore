@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.git/
+.env
+data/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.clawpatch/

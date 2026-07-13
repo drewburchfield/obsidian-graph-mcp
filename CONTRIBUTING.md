@@ -25,10 +25,10 @@ Be respectful, constructive, and collaborative. We're building tools to help peo
 
 ```bash
 # Quick validation
-docker exec -i obsidian-graph python test_e2e.py
+docker exec -i obsidian-graph .venv/bin/python test_e2e.py
 
 # Full test suite
-docker exec -i obsidian-graph pytest tests/ -v
+docker exec -i obsidian-graph .venv/bin/pytest tests/ -v
 ```
 
 ## How to Contribute
@@ -117,7 +117,7 @@ obsidian-graph/
 ├── src/
 │   ├── server.py          # MCP server entry point
 │   ├── vector_store.py    # PostgreSQL operations
-│   ├── embedder.py        # Voyage Context-3 client
+│   ├── embedder.py        # Voyage Context-4 client
 │   ├── graph_builder.py   # BFS graph traversal
 │   ├── hub_analyzer.py    # Hub/orphan detection
 │   ├── file_watcher.py    # Watchdog integration
@@ -150,7 +150,7 @@ obsidian-graph/
 
 ### Adding Embedding Providers
 
-Currently supports Voyage Context-3 only. To add alternatives:
+Currently supports Voyage Context-4 only. To add alternatives:
 
 1. Create abstraction layer (see research in OBSIDIAN_GAP_ANALYSIS.md)
 2. Implement provider interface for new model

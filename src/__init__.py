@@ -2,7 +2,7 @@
 Obsidian Graph MCP Server - Semantic knowledge graph navigation.
 
 Provides semantic search and graph analysis for Obsidian vaults using:
-- Voyage Context-3 embeddings (1024-dimensional)
+- Voyage Context-4 embeddings (1024-dimensional)
 - PostgreSQL + pgvector for vector storage
 - Multi-hop graph traversal with BFS
 - Hub and orphan note detection
