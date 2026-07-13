@@ -37,6 +37,8 @@ services:
       - EMBEDDING_PROVIDER=openrouter
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_EMBED_MODEL=qwen/qwen3-embedding-8b
+      # 2048 dims measured identical at the eval gate with half the storage;
+      # deferred switch, see evals/README.md for the recipe
       - OPENROUTER_EMBED_DIMS=4096
       - EMBEDDING_DIMENSIONS=4096
       - POSTGRES_HOST=consulting-pgvector
