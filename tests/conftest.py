@@ -36,6 +36,7 @@ def mock_store():
     store.get_note_count = AsyncMock(return_value=0)
     store.get_metadata = AsyncMock(return_value=None)
     store.set_metadata = AsyncMock()
+    store.delete_stale_chunks = AsyncMock(return_value=0)
 
     # Methods for exclusion cleanup
     store.get_all_paths = AsyncMock(return_value=[])

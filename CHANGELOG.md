@@ -81,6 +81,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Chunked notes no longer distort every graph tool**: `search_notes` and `get_similar_notes` collapse chunk rows to the best-matching chunk per note; `get_hub_notes`/`get_orphaned_notes` return one row per document; connection counts count DISTINCT connected documents instead of chunk rows (an 87-chunk transcript previously occupied the entire hub list with inflated counts)
+  - The connection-count algorithm is now versioned in `index_metadata`; upgraded deployments automatically refresh their materialized counts once
+- `get_similar_notes` is deterministic for multi-chunk sources (any-chunk-to-any-chunk, single SQL query), excludes the source in SQL, and no longer needs two pool connections (deadlocked with `max_connections=1`)
+- **File watcher no longer silently drops change events**: the debounce compared wall-clock timestamps against a monotonic sleep, so sub-millisecond clock jitter could abandon a pending change until the file's next edit; timestamps are now monotonic and early wakes re-sleep the remainder. The per-file lock is also held across the reindex, so overlapping debounces cannot re-index the same file concurrently
+- Connection-count refresh no longer overwrites `last_indexed_at`, which could mask genuinely stale files from the startup scan
+- Failed `PostgreSQLVectorStore.initialize()` closes the connection pool instead of leaking it
+- `NaN` threshold values are rejected by validation instead of bypassing range checks
+- **Notes that shrink on re-index no longer keep stale chunks searchable**: re-indexing deletes chunk rows beyond the new chunk count (watcher, indexer), and batch upserts now update `total_chunks` on conflict
+- A failed connection-count refresh is no longer recorded as a completed algorithm migration; it retries on the next hub/orphan call and logs an actionable error
+- Integration tests clean up their fixture rows and `test_e2e_docker.py` requires an explicit `RUN_E2E_TESTS` opt-in, so test runs can no longer pollute a live database
+
 ### Planned
 - Separate src/ into engine/ and mcp/ packages
 - Additional embedding provider support

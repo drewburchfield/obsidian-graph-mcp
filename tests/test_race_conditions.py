@@ -73,7 +73,7 @@ async def test_file_watcher_concurrent_debounce_race(tmp_path):
     file_path = str(test_file)
     tasks = []
     for i in range(10):
-        watcher.pending_changes[file_path] = time.time()
+        watcher.pending_changes[file_path] = time.monotonic()
         task = asyncio.create_task(watcher._debounced_reindex(file_path))
         tasks.append(task)
         await asyncio.sleep(0.01)  # 10ms between modifications
@@ -133,7 +133,7 @@ async def test_file_watcher_different_files_concurrent(tmp_path):
     # Trigger re-index for each file
     for f in files:
         file_path = str(f)
-        watcher.pending_changes[file_path] = time.time()
+        watcher.pending_changes[file_path] = time.monotonic()
         asyncio.create_task(watcher._debounced_reindex(file_path))
 
     # Wait for all debounces
@@ -173,6 +173,10 @@ async def test_hub_analyzer_concurrent_refresh_race():
 
     mock_store = MagicMock()
     mock_store.pool = mock_pool
+    # Counts already computed by the current algorithm: this test exercises
+    # the staleness path, not the algorithm-version migration
+    mock_store.get_metadata = AsyncMock(return_value="2")
+    mock_store.set_metadata = AsyncMock()
 
     analyzer = HubAnalyzer(mock_store)
 
@@ -269,7 +273,7 @@ async def test_file_watcher_stress_many_files(tmp_path):
     for file in files:
         for edit_num in range(5):
             file_path = str(file)
-            watcher.pending_changes[file_path] = time.time()
+            watcher.pending_changes[file_path] = time.monotonic()
             asyncio.create_task(watcher._debounced_reindex(file_path))
             await asyncio.sleep(0.001)  # 1ms between edits
 

@@ -186,7 +186,13 @@ async def test_mcp_tools_integration(tmp_path):
         print("=" * 60)
 
     finally:
-        await store.close()
+        # Remove fixture rows so runs never pollute the configured database
+        try:
+            await store.delete_notes_by_paths(
+                ["ml/machine-learning.md", "ml/neural-networks.md", "philosophy/mind.md"]
+            )
+        finally:
+            await store.close()
 
 
 if __name__ == "__main__":
