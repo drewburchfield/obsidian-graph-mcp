@@ -62,6 +62,20 @@ async def initialize_server():
 
     await store.initialize()
 
+    # Embeddings from different models are not comparable: warn loudly if the
+    # stored index was built with a different model than this server queries with
+    note_count = await store.get_note_count()
+    if note_count:
+        stored_model = await store.get_metadata("embedding_model")
+        if stored_model != embedder.model:
+            logger.error(
+                f"Embedding model mismatch: the index was built with "
+                f"'{stored_model or 'unknown (pre-VOYAGE_MODEL index)'}' but this server "
+                f"embeds queries with '{embedder.model}'. Similarity results will be "
+                f"unreliable until you re-index: "
+                f"docker exec -i obsidian-graph .venv/bin/python -m src.indexer"
+            )
+
     # Initialize graph builder and hub analyzer
     graph_builder = GraphBuilder(store)
     hub_analyzer = HubAnalyzer(store)

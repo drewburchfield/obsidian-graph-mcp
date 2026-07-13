@@ -6,6 +6,15 @@
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- Corpus-level metadata (e.g. which embedding model built the index).
+-- Embeddings from different models are not comparable, so the server
+-- checks this at startup against its configured model.
+CREATE TABLE IF NOT EXISTS index_metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Main notes table with vector embeddings
 -- Supports chunking for large notes (voyage-context-4 pattern)
 CREATE TABLE IF NOT EXISTS notes (

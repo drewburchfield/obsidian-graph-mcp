@@ -181,13 +181,8 @@ pytest tests/test_race_conditions.py::test_hub_analyzer_concurrent_refresh_race 
 
 **Diagnosis:**
 ```bash
-# Check if any locks are held
-docker exec -it obsidian-graph .venv/bin/python -c "
-import asyncio
-# Print all running tasks
-for task in asyncio.all_tasks():
-    print(task)
-"
+# Look for timeout/lock warnings in recent server logs
+docker logs obsidian-graph --since 10m 2>&1 | grep -iE "timeout|lock|deadlock"
 
 # Check container CPU usage
 docker stats obsidian-graph

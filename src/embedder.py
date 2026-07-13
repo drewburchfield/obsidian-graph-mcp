@@ -50,6 +50,14 @@ def _is_token_limit_error(e: Exception) -> bool:
     )
 
 
+def _is_invalid_model_error(e: Exception) -> bool:
+    """Check if an exception is a deterministic invalid-model error (not retryable)."""
+    error_lower = str(e).lower()
+    return "model" in error_lower and any(
+        marker in error_lower for marker in ("invalid", "not found", "does not exist", "unsupported")
+    )
+
+
 class VoyageEmbedder:
     """
     Voyage contextualized embedding client with caching and rate limiting.
@@ -84,7 +92,8 @@ class VoyageEmbedder:
             raise ValueError("VOYAGE_API_KEY environment variable required")
 
         self.client = voyageai.Client(api_key=self.api_key)
-        self.model = model or os.getenv("VOYAGE_MODEL", "voyage-context-4")
+        # Empty/whitespace values fall through to the default, matching compose ${VAR:-} semantics
+        self.model = (model or os.getenv("VOYAGE_MODEL") or "").strip() or "voyage-context-4"
         self.batch_size = batch_size
         self.requests_per_minute = requests_per_minute
         self.api_timeout = api_timeout
@@ -309,6 +318,17 @@ class VoyageEmbedder:
                     logger.error(f"Token limit error (not retryable): {error_msg}")
                     raise EmbeddingError(
                         f"Token limit exceeded: {error_msg}",
+                        cause=e,
+                    ) from e
+
+                # Invalid model names are deterministic, don't retry
+                if _is_invalid_model_error(e):
+                    logger.error(
+                        f"Invalid model '{self.model}' (not retryable): {error_msg}. "
+                        f"Check VOYAGE_MODEL."
+                    )
+                    raise EmbeddingError(
+                        f"Invalid model '{self.model}': {error_msg}",
                         cause=e,
                     ) from e
 

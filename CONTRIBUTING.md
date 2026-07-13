@@ -23,12 +23,15 @@ Be respectful, constructive, and collaborative. We're building tools to help peo
 
 ### Running Tests
 
-```bash
-# Quick validation
-docker exec -i obsidian-graph .venv/bin/python test_e2e.py
+Tests run on the host (the Docker image ships without dev dependencies or the `tests/` directory):
 
+```bash
 # Full test suite
-docker exec -i obsidian-graph .venv/bin/pytest tests/ -v
+uv sync --extra dev
+uv run pytest tests/ -v
+
+# Docker end-to-end tests (requires the stack running and VOYAGE_API_KEY)
+uv run pytest tests/test_e2e_docker.py -v -s
 ```
 
 ## How to Contribute
