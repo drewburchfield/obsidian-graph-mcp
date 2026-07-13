@@ -248,7 +248,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         logger.debug(f"File modified: {file_path}")
 
         # Schedule debounced re-index with error handling
-        self.pending_changes[file_path] = time.time()
+        self.pending_changes[file_path] = time.monotonic()
         future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(file_path), self.loop)
         future.add_done_callback(self._handle_reindex_future_error)
 
@@ -269,7 +269,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         logger.debug(f"File created: {file_path}")
 
         # Schedule debounced re-index with error handling
-        self.pending_changes[file_path] = time.time()
+        self.pending_changes[file_path] = time.monotonic()
         future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(file_path), self.loop)
         future.add_done_callback(self._handle_reindex_future_error)
 
@@ -328,7 +328,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             in_vault = False
 
         if new_is_md and in_vault and not self._is_excluded(new_path):
-            self.pending_changes[new_path] = time.time()
+            self.pending_changes[new_path] = time.monotonic()
             future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(new_path), self.loop)
             future.add_done_callback(self._handle_reindex_future_error)
 
@@ -372,31 +372,37 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             - Lock cleanup prevents unbounded memory growth
             - CRITICAL: pending_changes deletion synchronized with cleanup check
         """
-        await asyncio.sleep(self.debounce_seconds)
+        sleep_for = self.debounce_seconds
+        while True:
+            await asyncio.sleep(sleep_for)
 
-        # Acquire lock for this specific file
-        lock = await self._get_lock_for_file(file_path)
-
-        async with lock:
             # CRITICAL: Check pending_changes under lock protection
             async with self._locks_lock:
                 last_change = self.pending_changes.get(file_path)
                 if last_change is None:
-                    return  # Already processed
+                    return  # Already processed by another coroutine
 
-                time_since_change = time.time() - last_change
-                if time_since_change < self.debounce_seconds:
-                    return  # More recent change pending
+                elapsed = time.monotonic() - last_change
+                if elapsed >= self.debounce_seconds:
+                    # Clear from pending (synchronized deletion)
+                    del self.pending_changes[file_path]
+                    break
 
-                # Clear from pending (synchronized deletion)
-                del self.pending_changes[file_path]
-                # Keep lock in dict (will be cleaned up after re-index)
+                # Woke before the debounce window closed (timer jitter, or a
+                # newer event refreshed the timestamp): sleep the remainder
+                # instead of abandoning the pending entry, which would leave
+                # the file unindexed until its next change
+                sleep_for = self.debounce_seconds - elapsed
 
-        # Re-index the file (outside lock to allow other debounce checks)
+        # Serialize re-indexing per file: hold the lock across the reindex so
+        # a later debounce for the same file cannot run _reindex_file
+        # concurrently with a still-running one
+        lock = await self._get_lock_for_file(file_path)
         try:
-            await self._reindex_file(file_path)
+            async with lock:
+                await self._reindex_file(file_path)
         finally:
-            # Cleanup lock (now safe - pending_changes deleted under lock protection)
+            # Cleanup lock (safe: pending_changes was deleted under lock protection)
             await self._cleanup_lock(file_path)
 
     async def _reindex_file(self, file_path: str):

@@ -19,9 +19,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Skip entire module if not configured for e2e
+# Skip entire module if not configured for e2e.
+# RUN_E2E_TESTS is a deliberate opt-in: these tests hit the live configured
+# database and Voyage API, so credentials alone must not enable them.
 pytestmark = [
     pytest.mark.e2e,
+    pytest.mark.skipif(
+        not os.getenv("RUN_E2E_TESTS"),
+        reason="RUN_E2E_TESTS not set - explicit opt-in required for live-deployment tests",
+    ),
     pytest.mark.skipif(
         not os.getenv("VOYAGE_API_KEY"),
         reason="VOYAGE_API_KEY not set",

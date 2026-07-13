@@ -70,6 +70,8 @@ async def run_all_tests():
         ),
     )
     check("similarity range", all(0 <= x["similarity"] <= 1 for x in r["results"]))
+    sp = [x["path"] for x in r["results"]]
+    check("search paths unique (chunked notes deduped)", len(sp) == len(set(sp)))
 
     r = await tool_search_notes(ctx, {"query": "xyzzy gobbledygook", "limit": 5, "threshold": 0.99})
     check("high threshold empty", len(r["results"]) == 0)
@@ -84,6 +86,8 @@ async def run_all_tests():
     r = await tool_get_similar_notes(ctx, {"note_path": tp, "limit": 5, "threshold": 0.3})
     check("returns results", len(r["results"]) > 0)
     check("excludes self", tp not in [x["path"] for x in r["results"]])
+    simp = [x["path"] for x in r["results"]]
+    check("similar paths unique (chunked notes deduped)", len(simp) == len(set(simp)))
 
     try:
         await tool_get_similar_notes(ctx, {"note_path": "nope.md", "limit": 5, "threshold": 0.3})
@@ -130,6 +134,12 @@ async def run_all_tests():
     ms1 = (time.time() - t) * 1000
     check("returns hubs", len(r["results"]) > 0)
     check("has connection_count", all("connection_count" in h for h in r["results"]))
+    hub_paths = [h["path"] for h in r["results"]]
+    check(
+        "hub paths unique (chunked notes deduped)",
+        len(hub_paths) == len(set(hub_paths)),
+        f"dupes: {[p for p in hub_paths if hub_paths.count(p) > 1][:3]}",
+    )
     check(
         "sorted desc",
         (
@@ -152,6 +162,8 @@ async def run_all_tests():
     r = await tool_get_orphaned_notes(ctx, {"max_connections": 3, "threshold": 0.3, "limit": 10})
     check("returns list", isinstance(r["results"], list))
     check("below max", all(o["connection_count"] <= 3 for o in r["results"]))
+    orphan_paths = [o["path"] for o in r["results"]]
+    check("orphan paths unique", len(orphan_paths) == len(set(orphan_paths)))
 
     # -- validation --
     print("== validation ==")

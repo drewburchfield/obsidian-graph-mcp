@@ -100,7 +100,9 @@ class PostgreSQLVectorStore:
                 f"@{self.host}:{self.port}/{quote_plus(self.database)}"
             )
 
-            self.pool = await asyncpg.create_pool(
+            # Assign self.pool only after verification succeeds; close the
+            # local pool on any post-creation failure so it never leaks
+            pool = await asyncpg.create_pool(
                 dsn,
                 min_size=self.min_connections,
                 max_size=self.max_connections,
@@ -108,38 +110,47 @@ class PostgreSQLVectorStore:
                 setup=self._setup_connection,
             )
 
-            # Verify pgvector extension
-            async with self.pool.acquire() as conn:
-                has_pgvector = await conn.fetchval(
-                    "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')"
-                )
-                if not has_pgvector:
-                    raise VectorStoreError("pgvector extension is not installed")
-
-                # Verify notes table exists
-                table_exists = await conn.fetchval(
-                    "SELECT EXISTS(SELECT 1 FROM information_schema.tables "
-                    "WHERE table_name = 'notes')"
-                )
-                if not table_exists:
-                    logger.warning("Notes table does not exist yet (will be created by schema.sql)")
-                else:
-                    # Migration: remove trigger that overwrites file mtime (existing databases)
-                    await conn.execute(
-                        "DROP TRIGGER IF EXISTS trigger_update_notes_modified_at ON notes"
+            try:
+                # Verify pgvector extension
+                async with pool.acquire() as conn:
+                    has_pgvector = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')"
                     )
-                    await conn.execute("DROP FUNCTION IF EXISTS update_modified_at()")
+                    if not has_pgvector:
+                        raise VectorStoreError("pgvector extension is not installed")
 
-                # Migration: corpus-level metadata (e.g. which embedding model built the index);
-                # created here so existing databases get it without re-running schema.sql
-                await conn.execute("""
-                    CREATE TABLE IF NOT EXISTS index_metadata (
-                        key TEXT PRIMARY KEY,
-                        value TEXT NOT NULL,
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    # Verify notes table exists
+                    table_exists = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM information_schema.tables "
+                        "WHERE table_name = 'notes')"
                     )
-                    """)
+                    if not table_exists:
+                        logger.warning(
+                            "Notes table does not exist yet (will be created by schema.sql)"
+                        )
+                    else:
+                        # Migration: remove trigger that overwrites file mtime
+                        # (existing databases)
+                        await conn.execute(
+                            "DROP TRIGGER IF EXISTS trigger_update_notes_modified_at ON notes"
+                        )
+                        await conn.execute("DROP FUNCTION IF EXISTS update_modified_at()")
 
+                    # Migration: corpus-level metadata (e.g. which embedding model built
+                    # the index); created here so existing databases get it without
+                    # re-running schema.sql
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS index_metadata (
+                            key TEXT PRIMARY KEY,
+                            value TEXT NOT NULL,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        )
+                        """)
+            except BaseException:
+                await pool.close()
+                raise
+
+            self.pool = pool
             logger.info(f"PostgreSQL connected: {self.max_connections} max connections")
 
         except asyncpg.PostgresError as e:
@@ -222,16 +233,21 @@ class PostgreSQLVectorStore:
             # Similarity: 1 = identical, 0 = opposite
             distance_threshold = 1.0 - threshold
 
+            # One result per note: chunked notes are collapsed to their
+            # best-matching chunk so a single long note cannot fill the results
             query = """
-                SELECT
-                    path,
-                    title,
-                    content,
-                    1.0 - (embedding <=> $1::vector) AS similarity
-                FROM notes
-                WHERE embedding IS NOT NULL
-                    AND (embedding <=> $1::vector) <= $2
-                ORDER BY embedding <=> $1::vector
+                SELECT path, title, content, similarity FROM (
+                    SELECT DISTINCT ON (path)
+                        path,
+                        title,
+                        content,
+                        1.0 - (embedding <=> $1::vector) AS similarity
+                    FROM notes
+                    WHERE embedding IS NOT NULL
+                        AND (embedding <=> $1::vector) <= $2
+                    ORDER BY path, embedding <=> $1::vector
+                ) best_chunk_per_note
+                ORDER BY similarity DESC, path
                 LIMIT $3
             """
 
@@ -280,26 +296,50 @@ class PostgreSQLVectorStore:
 
         try:
             async with self.pool.acquire() as conn:
-                # Fetch source note's embedding
-                source_embedding = await self._with_timeout(
-                    conn.fetchval("SELECT embedding FROM notes WHERE path = $1", note_path),
+                exists = await self._with_timeout(
+                    conn.fetchval("SELECT EXISTS(SELECT 1 FROM notes WHERE path = $1)", note_path),
                     timeout=5.0,
                 )
-
-                if source_embedding is None:
+                if not exists:
                     raise VectorStoreError(f"Note not found: {note_path}")
 
-                # Search using source embedding (exclude self)
-                results = await self.search(
-                    query_embedding=list(source_embedding),
-                    limit=limit + 1,  # +1 to account for self exclusion
-                    threshold=threshold,
+                # Any-chunk-to-any-chunk comparison, collapsed to the best match
+                # per target note, with self excluded in SQL. Single connection
+                # and query, so a one-connection pool cannot deadlock.
+                query = """
+                    SELECT path, title, content, similarity FROM (
+                        SELECT DISTINCT ON (n2.path)
+                            n2.path,
+                            n2.title,
+                            n2.content,
+                            1.0 - (n1.embedding <=> n2.embedding) AS similarity
+                        FROM notes n1
+                        JOIN notes n2 ON n2.path != n1.path
+                        WHERE n1.path = $1
+                            AND n1.embedding IS NOT NULL
+                            AND n2.embedding IS NOT NULL
+                            AND (n1.embedding <=> n2.embedding) <= $2
+                        ORDER BY n2.path, n1.embedding <=> n2.embedding
+                    ) best_chunk_per_note
+                    ORDER BY similarity DESC, path
+                    LIMIT $3
+                """
+                rows = await asyncio.wait_for(
+                    conn.fetch(query, note_path, 1.0 - threshold, limit),
+                    timeout=10.0,
                 )
+                return [
+                    SearchResult(
+                        path=row["path"],
+                        title=row["title"],
+                        content=row["content"],
+                        similarity=float(row["similarity"]),
+                    )
+                    for row in rows
+                ]
 
-                # Remove self from results
-                results = [r for r in results if r.path != note_path]
-                return results[:limit]
-
+        except VectorStoreError:
+            raise
         except TimeoutError as e:
             raise VectorStoreError("Similar notes search timed out") from e
         except Exception as e:

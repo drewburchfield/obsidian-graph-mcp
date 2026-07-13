@@ -109,7 +109,7 @@ async def test_file_watcher_debounces_rapid_edits(tmp_vault, mock_store, mock_em
     # Simulate 5 rapid changes
     file_path = str(test_file)
     for i in range(5):
-        watcher.pending_changes[file_path] = time.time()
+        watcher.pending_changes[file_path] = time.monotonic()
         asyncio.create_task(watcher._debounced_reindex(file_path))
         await asyncio.sleep(0.05)  # 50ms between edits
 
@@ -165,7 +165,7 @@ async def test_lock_cleanup_prevents_memory_leak(tmp_vault, mock_store, mock_emb
     # Process many files
     for i in range(100):
         file_path = str(tmp_vault / f"test_{i}.md")
-        watcher.pending_changes[file_path] = time.time()
+        watcher.pending_changes[file_path] = time.monotonic()
         await watcher._debounced_reindex(file_path)
 
     # Wait for cleanup
@@ -275,7 +275,7 @@ async def test_cleanup_lock_removes_unused_locks(tmp_vault, mock_store, mock_emb
     await watcher._get_lock_for_file(file_path)
 
     # Add pending change
-    watcher.pending_changes[file_path] = time.time()
+    watcher.pending_changes[file_path] = time.monotonic()
 
     # Cleanup should NOT remove lock (pending change exists)
     await watcher._cleanup_lock(file_path)
