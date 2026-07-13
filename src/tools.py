@@ -97,7 +97,11 @@ async def search_notes(ctx: ToolContext, arguments: dict[str, Any]) -> dict[str,
         # rerank order) keeps the reranker's signal without letting it bury a
         # strong dense hit -- on the braintrust eval this is the robust choice
         # (best R@10), since results feed an LLM that reads the whole top-N.
-        dense = await ctx.store.search(query_embedding, _POOL_SIZE, threshold=0.0)
+        # Chunk-level pool: the reranker sees every chunk and picks the best;
+        # SQL-level dedup here starves it and regressed the golden-set eval
+        dense = await ctx.store.search(
+            query_embedding, _POOL_SIZE, threshold=0.0, per_document=False
+        )
         lexical = await ctx.store.lexical_search(query, _POOL_SIZE)
         pool = _rrf(dense, lexical)[:_POOL_SIZE]
         try:

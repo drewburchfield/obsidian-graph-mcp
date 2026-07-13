@@ -244,15 +244,23 @@ class PostgreSQLVectorStore:
             )
 
     async def search(
-        self, query_embedding: list[float], limit: int = 10, threshold: float = 0.5
+        self,
+        query_embedding: list[float],
+        limit: int = 10,
+        threshold: float = 0.5,
+        per_document: bool = True,
     ) -> list[SearchResult]:
         """
         Semantic search using vector similarity.
 
         Args:
-            query_embedding: 1024-dimensional query vector
+            query_embedding: query vector (EMBEDDING_DIMENSIONS wide)
             limit: Max results (1-50)
             threshold: Minimum similarity score (0.0-1.0)
+            per_document: collapse chunk rows to each note's best-matching
+                chunk (right for user-facing results). Pass False for
+                candidate pools feeding a reranker, which wants every chunk
+                and picks the best itself (the eval-validated pipeline shape).
 
         Returns:
             List of SearchResult with similarity scores
@@ -272,11 +280,28 @@ class PostgreSQLVectorStore:
             # Similarity: 1 = identical, 0 = opposite
             distance_threshold = 1.0 - threshold
 
-            # One result per note: chunked notes are collapsed to their
-            # best-matching chunk so a single long note cannot fill the results
-            query = """
-                SELECT path, title, content, similarity FROM (
-                    SELECT DISTINCT ON (path)
+            if per_document:
+                # One result per note: chunked notes are collapsed to their
+                # best-matching chunk so a single long note cannot fill the results
+                query = """
+                    SELECT path, title, content, similarity FROM (
+                        SELECT DISTINCT ON (path)
+                            path,
+                            title,
+                            content,
+                            1.0 - (embedding <=> $1::vector) AS similarity
+                        FROM notes
+                        WHERE embedding IS NOT NULL
+                            AND (embedding <=> $1::vector) <= $2
+                        ORDER BY path, embedding <=> $1::vector
+                    ) best_chunk_per_note
+                    ORDER BY similarity DESC, path
+                    LIMIT $3
+                """
+            else:
+                # Chunk-level rows for reranker candidate pools
+                query = """
+                    SELECT
                         path,
                         title,
                         content,
@@ -284,11 +309,9 @@ class PostgreSQLVectorStore:
                     FROM notes
                     WHERE embedding IS NOT NULL
                         AND (embedding <=> $1::vector) <= $2
-                    ORDER BY path, embedding <=> $1::vector
-                ) best_chunk_per_note
-                ORDER BY similarity DESC, path
-                LIMIT $3
-            """
+                    ORDER BY embedding <=> $1::vector
+                    LIMIT $3
+                """
 
             async with self.pool.acquire() as conn:
                 start_time = time.time()
