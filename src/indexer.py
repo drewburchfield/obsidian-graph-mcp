@@ -14,7 +14,7 @@ from loguru import logger
 from .embedder import VoyageEmbedder
 from .exceptions import EmbeddingError
 from .exclusion import ExclusionFilter, cleanup_excluded_notes, load_exclusion_filter
-from .vector_store import Note, PostgreSQLVectorStore
+from .vector_store import Note, PostgreSQLVectorStore, VectorStoreError
 
 
 def scan_vault(vault_path: str, exclusion_filter: ExclusionFilter | None = None) -> list[Path]:
@@ -194,7 +194,9 @@ async def index_vault(vault_path: str, batch_size: int = 100) -> bool:
                     logger.info(f"Chunked {note_data['path']}: {total_chunks} chunks")
 
                     for chunk_idx, (chunk_text, embedding) in enumerate(
-                        zip(chunks, embeddings_list, strict=False)
+                        # strict: a count mismatch must raise, not silently
+                        # produce an incomplete chunk set (see upsert_batch)
+                        zip(chunks, embeddings_list, strict=True)
                     ):
                         notes.append(
                             Note(
@@ -212,9 +214,18 @@ async def index_vault(vault_path: str, batch_size: int = 100) -> bool:
             # Insert into PostgreSQL (upsert_batch atomically replaces each
             # path's full chunk set, deleting stale chunk rows)
             if notes:
-                count = await store.upsert_batch(notes)
-                run_upserted += count
-                logger.info(f"Indexed {count} note chunks")
+                try:
+                    count = await store.upsert_batch(notes)
+                    run_upserted += count
+                    logger.info(f"Indexed {count} note chunks")
+                except VectorStoreError as e:
+                    # Batch-level DB failures flow through the same
+                    # incomplete-run accounting as per-file embedding failures
+                    logger.error(f"Batch upsert failed: {e}")
+                    for batch_note_path in {n.path for n in notes}:
+                        all_failed_notes.append(
+                            {"path": batch_note_path, "error": f"batch upsert failed: {e}"}
+                        )
 
         # Final stats
         total_notes = await store.get_note_count()

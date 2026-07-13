@@ -249,5 +249,48 @@ async def test_initialize_closes_pool_when_verification_fails(monkeypatch):
     assert store.pool is None
 
 
+@pytest.mark.asyncio
+async def test_upsert_batch_rejects_incomplete_chunk_set():
+    """A partial chunk set would silently delete live chunks; it must raise."""
+    from src.vector_store import Note, PostgreSQLVectorStore, VectorStoreError
+
+    store = PostgreSQLVectorStore(password="test-password")
+    store.pool = MagicMock()  # bypass the not-initialized guard
+
+    # One chunk of a three-chunk note: chunk_index {1} != {0, 1, 2}
+    partial = Note(
+        path="a.md",
+        title="A",
+        content="chunk 1",
+        embedding=[0.1] * 1024,
+        chunk_index=1,
+        total_chunks=3,
+    )
+    with pytest.raises(VectorStoreError, match="complete chunk set"):
+        await store.upsert_batch([partial])
+
+    # Inconsistent total_chunks for the same path must also raise
+    inconsistent = [
+        Note(
+            path="b.md",
+            title="B",
+            content="c0",
+            embedding=[0.1] * 1024,
+            chunk_index=0,
+            total_chunks=2,
+        ),
+        Note(
+            path="b.md",
+            title="B",
+            content="c1",
+            embedding=[0.1] * 1024,
+            chunk_index=1,
+            total_chunks=3,
+        ),
+    ]
+    with pytest.raises(VectorStoreError, match="complete chunk set"):
+        await store.upsert_batch(inconsistent)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

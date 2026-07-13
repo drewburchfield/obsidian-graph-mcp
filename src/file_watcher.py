@@ -481,7 +481,10 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                         total_chunks=total_chunks,
                     )
                     for chunk_idx, (chunk_text, embedding) in enumerate(
-                        zip(chunks, embeddings_list, strict=False)
+                        # strict: a chunk/embedding count mismatch must raise,
+                        # not silently truncate the chunk set (upsert_batch
+                        # would then reject the incomplete set anyway)
+                        zip(chunks, embeddings_list, strict=True)
                     )
                 ]
                 # Atomic replacement of the path's full chunk set
@@ -489,7 +492,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                 logger.info(f"Re-indexed {total_chunks} chunks: {rel_path}")
 
         except Exception as e:
-            logger.error(f"Failed to re-index {file_path}: {e}")
+            logger.error(f"Failed to re-index {file_path}: {e}", exc_info=True)
 
 
 class VaultWatcher:

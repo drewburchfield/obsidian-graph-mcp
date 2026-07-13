@@ -438,6 +438,21 @@ class PostgreSQLVectorStore:
                     f"got {len(note.embedding)} for note: {note.path}"
                 )
 
+        # Enforce the complete-chunk-set contract: a partial or inconsistent
+        # batch would silently delete live chunks via the stale-chunk cleanup
+        by_path: dict[str, list[Note]] = {}
+        for note in notes:
+            by_path.setdefault(note.path, []).append(note)
+        for note_path, path_notes in by_path.items():
+            totals = {n.total_chunks for n in path_notes}
+            indexes = {n.chunk_index for n in path_notes}
+            if len(totals) != 1 or indexes != set(range(next(iter(totals)))):
+                raise VectorStoreError(
+                    f"upsert_batch requires the complete chunk set per path: "
+                    f"'{note_path}' has chunk_index {sorted(indexes)} with "
+                    f"total_chunks {sorted(totals)}"
+                )
+
         try:
             query = """
                 INSERT INTO notes (path, title, content, embedding, modified_at,
