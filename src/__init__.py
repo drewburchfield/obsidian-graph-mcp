@@ -9,7 +9,7 @@ Provides semantic search and graph analysis for Obsidian vaults using:
 - Incremental file watching with debouncing
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from .embedder import VoyageEmbedder
 from .exceptions import DatabaseError, EmbeddingError, ObsidianGraphError

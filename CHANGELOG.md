@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - .gitignore for credential files
 - Security hardening (cap_drop, no-new-privileges)
 
-## [Unreleased]
+## [1.1.0] - 2026-07-12
 
 ### Changed
 - **Embedding model upgraded to `voyage-context-4`** (from `voyage-context-3`): same 1024-dim vectors and `contextualized_embed` API, better retrieval quality (+2.08% chunk-level NDCG@10 per Voyage), lower price ($0.12/1M vs $0.18/1M), and its own 200M free-token tier
@@ -78,6 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Startup scan now cleans up orphan paths before re-indexing stale files
 - Renamed project from "MCP Server" to "Obsidian Graph" (semantic knowledge graph engine)
 - Container names: obsidian-graph (app), obsidian-graph-pgvector (db)
+
+## [Unreleased]
 
 ### Planned
 - Separate src/ into engine/ and mcp/ packages

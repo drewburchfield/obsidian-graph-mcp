@@ -132,15 +132,13 @@ class PostgreSQLVectorStore:
 
                 # Migration: corpus-level metadata (e.g. which embedding model built the index);
                 # created here so existing databases get it without re-running schema.sql
-                await conn.execute(
-                    """
+                await conn.execute("""
                     CREATE TABLE IF NOT EXISTS index_metadata (
                         key TEXT PRIMARY KEY,
                         value TEXT NOT NULL,
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                     )
-                    """
-                )
+                    """)
 
             logger.info(f"PostgreSQL connected: {self.max_connections} max connections")
 

@@ -54,7 +54,8 @@ def _is_invalid_model_error(e: Exception) -> bool:
     """Check if an exception is a deterministic invalid-model error (not retryable)."""
     error_lower = str(e).lower()
     return "model" in error_lower and any(
-        marker in error_lower for marker in ("invalid", "not found", "does not exist", "unsupported")
+        marker in error_lower
+        for marker in ("invalid", "not found", "does not exist", "unsupported")
     )
 
 
