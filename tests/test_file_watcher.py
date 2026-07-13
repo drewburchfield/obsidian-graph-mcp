@@ -190,8 +190,9 @@ async def test_file_watcher_handles_empty_files(tmp_vault, mock_store, mock_embe
     # Trigger re-index
     await watcher._reindex_file(str(empty_file))
 
-    # Should not crash, and should not call upsert_note (returns early on EmbeddingError)
+    # Should not crash, and should not write anything (returns early on EmbeddingError)
     mock_store.upsert_note.assert_not_called()
+    mock_store.upsert_batch.assert_not_called()
 
 
 @pytest.mark.asyncio

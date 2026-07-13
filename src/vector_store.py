@@ -174,33 +174,6 @@ class PostgreSQLVectorStore:
             self.pool = None
             logger.debug("PostgreSQL connection pool closed")
 
-    async def delete_stale_chunks(self, path: str, total_chunks: int) -> int:
-        """
-        Delete chunk rows at or beyond total_chunks for a path.
-
-        When a note shrinks on re-index (e.g. 3 chunks -> 1), the upsert only
-        rewrites chunks 0..total_chunks-1; without this, the old higher-index
-        chunks stay searchable with stale content and counts.
-
-        Returns:
-            Number of stale chunk rows deleted
-        """
-        if not self.pool:
-            raise VectorStoreError("PostgreSQL store not initialized")
-
-        async with self.pool.acquire() as conn:
-            result = await self._with_timeout(
-                conn.execute(
-                    "DELETE FROM notes WHERE path = $1 AND chunk_index >= $2",
-                    path,
-                    total_chunks,
-                )
-            )
-            deleted = int(result.split()[-1]) if result else 0
-            if deleted:
-                logger.debug(f"Deleted {deleted} stale chunk rows for {path}")
-            return deleted
-
     async def get_metadata(self, key: str) -> str | None:
         """Read a corpus-level metadata value (e.g. 'embedding_model')."""
         if not self.pool:
@@ -440,6 +413,11 @@ class PostgreSQLVectorStore:
         """
         Insert or update multiple notes in a batch.
 
+        The batch must contain the COMPLETE chunk set for every path it
+        includes: in the same transaction, chunk rows at or beyond each
+        path's total_chunks are deleted, so a note that shrank on re-index
+        cannot keep stale chunks searchable (atomic replacement).
+
         Returns:
             Number of notes processed
         """
@@ -458,6 +436,21 @@ class PostgreSQLVectorStore:
                 raise VectorStoreError(
                     f"Note embedding must be {EMBEDDING_DIMENSIONS} dimensions, "
                     f"got {len(note.embedding)} for note: {note.path}"
+                )
+
+        # Enforce the complete-chunk-set contract: a partial or inconsistent
+        # batch would silently delete live chunks via the stale-chunk cleanup
+        by_path: dict[str, list[Note]] = {}
+        for note in notes:
+            by_path.setdefault(note.path, []).append(note)
+        for note_path, path_notes in by_path.items():
+            totals = {n.total_chunks for n in path_notes}
+            indexes = {n.chunk_index for n in path_notes}
+            if len(totals) != 1 or indexes != set(range(next(iter(totals)))):
+                raise VectorStoreError(
+                    f"upsert_batch requires the complete chunk set per path: "
+                    f"'{note_path}' has chunk_index {sorted(indexes)} with "
+                    f"total_chunks {sorted(totals)}"
                 )
 
         try:
@@ -490,12 +483,25 @@ class PostgreSQLVectorStore:
                 for n in notes
             ]
 
+            chunk_totals = {n.path: n.total_chunks for n in notes}
+
             async with self.pool.acquire() as conn:
                 async with conn.transaction():
                     await self._with_timeout(
                         conn.executemany(query, batch_data),
                         timeout=30.0,
                     )
+                    # Same transaction: drop chunk rows beyond each path's new
+                    # chunk count so replacement is atomic (no crash window
+                    # between upsert and stale-chunk cleanup)
+                    for note_path, chunk_total in chunk_totals.items():
+                        await self._with_timeout(
+                            conn.execute(
+                                "DELETE FROM notes WHERE path = $1 AND chunk_index >= $2",
+                                note_path,
+                                chunk_total,
+                            )
+                        )
 
             logger.info(f"Batch upserted {len(notes)} notes")
             return len(notes)

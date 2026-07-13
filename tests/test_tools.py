@@ -44,80 +44,86 @@ async def setup_test_data():
     store = PostgreSQLVectorStore()
     await store.initialize()
 
-    # Create test notes
-    test_notes_content = [
-        (
-            "ml/machine-learning.md",
-            "Machine Learning",
-            """
-Machine learning is a subset of artificial intelligence that focuses on
-developing algorithms that can learn from and make predictions on data.
-Neural networks and deep learning are key techniques.
-        """,
-        ),
-        (
-            "ml/neural-networks.md",
-            "Neural Networks",
-            """
-Neural networks are computing systems inspired by biological neural networks.
-They consist of layers of interconnected nodes that process information.
-Deep learning uses multi-layer neural networks.
-        """,
-        ),
-        (
-            "ml/deep-learning.md",
-            "Deep Learning",
-            """
-Deep learning is a subset of machine learning using multi-layered neural networks.
-It excels at tasks like image recognition, natural language processing,
-and speech recognition.
-        """,
-        ),
-        (
-            "philosophy/consciousness.md",
-            "Consciousness",
-            """
-Consciousness is the state of being aware of one's thoughts, feelings, and surroundings.
-Philosophers have debated the nature of consciousness for centuries.
-        """,
-        ),
-        (
-            "neuroscience/brain.md",
-            "The Brain",
-            """
-The human brain is the central organ of the nervous system.
-It contains billions of neurons that form complex networks.
-        """,
-        ),
-    ]
-
-    # Generate embeddings and insert
-    texts = [content for _, _, content in test_notes_content]
-    embeddings = await embedder.embed_batch(texts, input_type="document")
-
-    notes = []
-    for (path, title, content), embedding in zip(test_notes_content, embeddings, strict=False):
-        if embedding:
-            notes.append(
-                Note(
-                    path=path,
-                    title=title,
-                    content=content.strip(),
-                    embedding=embedding,
-                    modified_at=datetime.now(),
-                    file_size_bytes=len(content),
-                )
-            )
-
-    await store.upsert_batch(notes)
-
+    # Everything after initialize runs under try/finally so a failure during
+    # embedding/upsert setup (not just during tests) still closes the pool
+    yield_started = False
     try:
+
+        # Create test notes
+        test_notes_content = [
+            (
+                "ml/machine-learning.md",
+                "Machine Learning",
+                """
+    Machine learning is a subset of artificial intelligence that focuses on
+    developing algorithms that can learn from and make predictions on data.
+    Neural networks and deep learning are key techniques.
+            """,
+            ),
+            (
+                "ml/neural-networks.md",
+                "Neural Networks",
+                """
+    Neural networks are computing systems inspired by biological neural networks.
+    They consist of layers of interconnected nodes that process information.
+    Deep learning uses multi-layer neural networks.
+            """,
+            ),
+            (
+                "ml/deep-learning.md",
+                "Deep Learning",
+                """
+    Deep learning is a subset of machine learning using multi-layered neural networks.
+    It excels at tasks like image recognition, natural language processing,
+    and speech recognition.
+            """,
+            ),
+            (
+                "philosophy/consciousness.md",
+                "Consciousness",
+                """
+    Consciousness is the state of being aware of one's thoughts, feelings, and surroundings.
+    Philosophers have debated the nature of consciousness for centuries.
+            """,
+            ),
+            (
+                "neuroscience/brain.md",
+                "The Brain",
+                """
+    The human brain is the central organ of the nervous system.
+    It contains billions of neurons that form complex networks.
+            """,
+            ),
+        ]
+
+        # Generate embeddings and insert
+        texts = [content for _, _, content in test_notes_content]
+        embeddings = await embedder.embed_batch(texts, input_type="document")
+
+        notes = []
+        for (path, title, content), embedding in zip(test_notes_content, embeddings, strict=False):
+            if embedding:
+                notes.append(
+                    Note(
+                        path=path,
+                        title=title,
+                        content=content.strip(),
+                        embedding=embedding,
+                        modified_at=datetime.now(),
+                        file_size_bytes=len(content),
+                    )
+                )
+
+        await store.upsert_batch(notes)
+
+        yield_started = True
         yield store, embedder
     finally:
         # Remove fixture rows so runs never pollute the configured database;
-        # close the pool even if the cleanup delete fails
+        # close the pool even if setup failed or the cleanup delete raises
         try:
-            await store.delete_notes_by_paths([path for path, _, _ in test_notes_content])
+            if yield_started:
+                await store.delete_notes_by_paths([path for path, _, _ in test_notes_content])
         finally:
             await store.close()
 

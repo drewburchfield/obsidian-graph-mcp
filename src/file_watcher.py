@@ -460,18 +460,17 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                     chunk_index=0,
                     total_chunks=1,
                 )
-                await self.store.upsert_note(note)
-                await self.store.delete_stale_chunks(rel_path, 1)
+                # upsert_batch atomically replaces the path's full chunk set
+                # (deletes stale chunk rows in the same transaction)
+                await self.store.upsert_batch([note])
                 logger.info(f"Re-indexed: {rel_path}")
             else:
                 # Chunked note - create one Note per chunk
                 chunks = self.embedder.chunk_text(content, chunk_size=2000, overlap=0)
                 logger.info(f"Re-indexing chunked note {rel_path}: {total_chunks} chunks")
 
-                for chunk_idx, (chunk_text, embedding) in enumerate(
-                    zip(chunks, embeddings_list, strict=False)
-                ):
-                    note = Note(
+                chunk_notes = [
+                    Note(
                         path=rel_path,
                         title=title,
                         content=chunk_text,
@@ -481,13 +480,19 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                         chunk_index=chunk_idx,
                         total_chunks=total_chunks,
                     )
-                    await self.store.upsert_note(note)
-
-                await self.store.delete_stale_chunks(rel_path, total_chunks)
+                    for chunk_idx, (chunk_text, embedding) in enumerate(
+                        # strict: a chunk/embedding count mismatch must raise,
+                        # not silently truncate the chunk set (upsert_batch
+                        # would then reject the incomplete set anyway)
+                        zip(chunks, embeddings_list, strict=True)
+                    )
+                ]
+                # Atomic replacement of the path's full chunk set
+                await self.store.upsert_batch(chunk_notes)
                 logger.info(f"Re-indexed {total_chunks} chunks: {rel_path}")
 
         except Exception as e:
-            logger.error(f"Failed to re-index {file_path}: {e}")
+            logger.error(f"Failed to re-index {file_path}: {e}", exc_info=True)
 
 
 class VaultWatcher:
