@@ -260,7 +260,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         logger.debug(f"File modified: {file_path}")
 
         # Schedule debounced re-index with error handling
-        self.pending_changes[file_path] = time.time()
+        self.pending_changes[file_path] = time.monotonic()
         future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(file_path), self.loop)
         future.add_done_callback(self._handle_reindex_future_error)
 
@@ -281,7 +281,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
         logger.debug(f"File created: {file_path}")
 
         # Schedule debounced re-index with error handling
-        self.pending_changes[file_path] = time.time()
+        self.pending_changes[file_path] = time.monotonic()
         future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(file_path), self.loop)
         future.add_done_callback(self._handle_reindex_future_error)
 
@@ -340,7 +340,7 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             in_vault = False
 
         if new_is_md and in_vault and not self._is_excluded(new_path):
-            self.pending_changes[new_path] = time.time()
+            self.pending_changes[new_path] = time.monotonic()
             future = asyncio.run_coroutine_threadsafe(self._debounced_reindex(new_path), self.loop)
             future.add_done_callback(self._handle_reindex_future_error)
 
@@ -359,6 +359,23 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                 self._reindex_locks[file_path] = asyncio.Lock()
             return self._reindex_locks[file_path]
 
+    async def _cleanup_lock(self, file_path: str):
+        """
+        Remove lock after re-indexing completes (prevent memory leak).
+
+        Args:
+            file_path: File path to cleanup lock for
+        """
+        async with self._locks_lock:
+            # Only remove if no pending changes for this file AND nothing is
+            # holding or waiting on the lock: popping a live lock would let a
+            # later debounce mint a fresh one and re-index the file
+            # concurrently with a still-running reindex
+            if file_path not in self.pending_changes:
+                lock = self._reindex_locks.get(file_path)
+                if lock is not None and not lock.locked() and not getattr(lock, "_waiters", None):
+                    self._reindex_locks.pop(file_path, None)
+
     async def _debounced_reindex(self, file_path: str):
         """
         Debounced re-indexing with race-condition-free lock management.
@@ -372,27 +389,38 @@ class ObsidianFileWatcher(FileSystemEventHandler):
             - Stable per-path locks prevent lock replacement races
             - CRITICAL: pending_changes deletion synchronized with cleanup check
         """
-        await asyncio.sleep(self.debounce_seconds)
+        sleep_for = self.debounce_seconds
+        while True:
+            await asyncio.sleep(sleep_for)
 
-        # Acquire lock for this specific file
-        lock = await self._get_lock_for_file(file_path)
-
-        async with lock:
             # CRITICAL: Check pending_changes under lock protection
             async with self._locks_lock:
                 last_change = self.pending_changes.get(file_path)
                 if last_change is None:
-                    return  # Already processed
+                    return  # Already processed by another coroutine
 
-                time_since_change = time.time() - last_change
-                if time_since_change < self.debounce_seconds:
-                    return  # More recent change pending
+                elapsed = time.monotonic() - last_change
+                if elapsed >= self.debounce_seconds:
+                    # Clear from pending (synchronized deletion)
+                    del self.pending_changes[file_path]
+                    break
 
-                # Clear from pending (synchronized deletion)
-                del self.pending_changes[file_path]
-            # Hold the stable per-path lock across the write. The lock map is
-            # bounded by the number of corpus paths touched in this process.
-            await self._reindex_file(file_path)
+                # Woke before the debounce window closed (timer jitter, or a
+                # newer event refreshed the timestamp): sleep the remainder
+                # instead of abandoning the pending entry, which would leave
+                # the file unindexed until its next change
+                sleep_for = self.debounce_seconds - elapsed
+
+        # Serialize re-indexing per file: hold the lock across the reindex so
+        # a later debounce for the same file cannot run _reindex_file
+        # concurrently with a still-running one
+        lock = await self._get_lock_for_file(file_path)
+        try:
+            async with lock:
+                await self._reindex_file(file_path)
+        finally:
+            # Cleanup lock (safe: pending_changes was deleted under lock protection)
+            await self._cleanup_lock(file_path)
 
     async def _reindex_file(self, file_path: str):
         """
@@ -447,17 +475,17 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                     chunk_index=0,
                     total_chunks=1,
                 )
-                await self.store.upsert_note(note)
+                # upsert_batch atomically replaces the path's full chunk set
+                # (deletes stale chunk rows in the same transaction)
+                await self.store.upsert_batch([note])
                 logger.info(f"Re-indexed: {rel_path}")
             else:
                 # Chunked note - create one Note per chunk
                 chunks = self.embedder.chunk_text(content, chunk_size=2000, overlap=0)
                 logger.info(f"Re-indexing chunked note {rel_path}: {total_chunks} chunks")
 
-                for chunk_idx, (chunk_text, embedding) in enumerate(
-                    zip(chunks, embeddings_list, strict=False)
-                ):
-                    note = Note(
+                chunk_notes = [
+                    Note(
                         path=rel_path,
                         title=title,
                         content=chunk_text,
@@ -467,12 +495,19 @@ class ObsidianFileWatcher(FileSystemEventHandler):
                         chunk_index=chunk_idx,
                         total_chunks=total_chunks,
                     )
-                    await self.store.upsert_note(note)
-
+                    for chunk_idx, (chunk_text, embedding) in enumerate(
+                        # strict: a chunk/embedding count mismatch must raise,
+                        # not silently truncate the chunk set (upsert_batch
+                        # would then reject the incomplete set anyway)
+                        zip(chunks, embeddings_list, strict=True)
+                    )
+                ]
+                # Atomic replacement of the path's full chunk set
+                await self.store.upsert_batch(chunk_notes)
                 logger.info(f"Re-indexed {total_chunks} chunks: {rel_path}")
 
         except Exception as e:
-            logger.error(f"Failed to re-index {file_path}: {e}")
+            logger.error(f"Failed to re-index {file_path}: {e}", exc_info=True)
 
 
 class VaultWatcher:

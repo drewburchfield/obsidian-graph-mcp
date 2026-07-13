@@ -134,6 +134,13 @@ def validate_float_range(
         )
         return default
 
+    # NaN compares False against both bounds, so reject non-finite values first
+    if not math.isfinite(value_float):
+        raise ValidationError(
+            f"Parameter '{param_name}' must be a finite number in range "
+            f"[{min_val}, {max_val}], got {value_float}"
+        )
+
     # Range check
     if not math.isfinite(value_float) or value_float < min_val or value_float > max_val:
         raise ValidationError(

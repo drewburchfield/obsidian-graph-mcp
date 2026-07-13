@@ -14,7 +14,7 @@ from loguru import logger
 from .converters import SUPPORTED_EXTS, convert_file
 from .exclusion import ExclusionFilter, load_exclusion_filter
 from .multi_format_indexer import scan_documents
-from .vector_store import Note, PostgreSQLVectorStore
+from .vector_store import Note, PostgreSQLVectorStore, embedding_signature
 
 
 @dataclass(frozen=True)
@@ -182,6 +182,15 @@ class CorpusSynchronizer:
         self._reconciling = True
         try:
             summary = await self._reconcile_body()
+            if summary.failed == 0:
+                # Record the embedding configuration after a clean reconcile
+                # (the server compares this at startup to detect drift)
+                try:
+                    await self.store.set_metadata(
+                        "embedding_signature", embedding_signature(self.embedder)
+                    )
+                except Exception as meta_exc:
+                    logger.warning(f"Could not record embedding signature: {meta_exc}")
             self._write_state(
                 "ready" if summary.failed == 0 else "degraded",
                 summary=summary.__dict__,

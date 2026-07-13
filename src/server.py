@@ -24,7 +24,7 @@ from .hub_analyzer import HubAnalyzer
 from .security_utils import SecurityError
 from .tools import TOOLS, ToolContext, ToolError
 from .validation import ValidationError
-from .vector_store import PostgreSQLVectorStore
+from .vector_store import PostgreSQLVectorStore, embedding_signature
 
 # Global tool context (initialized once at startup)
 _tool_context: ToolContext | None = None
@@ -92,7 +92,8 @@ async def initialize_server():
     if unsupported:
         raise ValueError(f"Unsupported CORPUS_EXTENSIONS: {sorted(unsupported)}")
 
-    # Initialize embedder (provider-configurable: voyage / ollama / gemini)
+    # Initialize embedder (provider-configurable: voyage / ollama / openrouter /
+    # gemini; the Voyage default resolves its model from VOYAGE_MODEL)
     embedder = make_embedder()
 
     # Initialize PostgreSQL vector store
@@ -107,6 +108,20 @@ async def initialize_server():
     )
 
     await store.initialize()
+
+    # Embeddings from different providers/models/dimensions are not comparable:
+    # warn loudly if the stored index was built with a different configuration
+    note_count = await store.get_note_count()
+    if note_count:
+        stored_sig = await store.get_metadata("embedding_signature")
+        current_sig = embedding_signature(embedder)
+        if stored_sig != current_sig:
+            logger.error(
+                f"Embedding configuration mismatch: the index was built with "
+                f"'{stored_sig or 'unknown (pre-signature index)'}' but this server "
+                f"embeds queries with '{current_sig}'. Similarity results will be "
+                f"unreliable until you re-index."
+            )
 
     # Initialize graph builder and hub analyzer
     graph_builder = GraphBuilder(store)

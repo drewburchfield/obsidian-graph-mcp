@@ -12,6 +12,14 @@ from loguru import logger
 from .exceptions import DatabaseError
 from .vector_store import PostgreSQLVectorStore
 
+# Version of the connection-count algorithm, persisted in index_metadata.
+# Bump when counting semantics change so upgraded deployments refresh their
+# materialized counts once instead of serving values from the old algorithm.
+# v2: counts DISTINCT connected documents (v1 counted chunk rows, inflating
+# counts for chunked notes).
+_COUNT_ALGO_KEY = "connection_count_algo"
+_COUNT_ALGO_VERSION = "2"
+
 
 class HubAnalyzer:
     """
@@ -26,7 +34,8 @@ class HubAnalyzer:
 
     Performance:
         - Refresh is O(N²) where N = number of notes
-        - Triggered when >50% of notes have stale connection_count
+        - Triggered when >50% of notes have stale connection_count, or once
+          when the counting algorithm version changes (_COUNT_ALGO_VERSION)
         - Awaited inline so counts are fresh before queries return
     """
 
@@ -61,20 +70,19 @@ class HubAnalyzer:
             # Check if connection_count needs refresh
             await self._ensure_fresh_counts(threshold)
 
-            # Query hubs. connection_count is stored per chunk, so collapse to one
-            # row per document (its most-connected chunk) before ranking — otherwise
-            # a heavily-chunked note floods every slot.
+            # Query hubs
             async with self.store.pool.acquire() as conn:
+                # One row per document: chunked notes share a connection_count,
+                # so collapse chunk rows before ranking
                 results = await conn.fetch(
                     """
-                    SELECT path, title, connection_count
-                    FROM (
+                    SELECT path, title, connection_count FROM (
                         SELECT DISTINCT ON (path) path, title, connection_count
                         FROM notes
                         WHERE connection_count >= $1
-                        ORDER BY path, connection_count DESC
-                    ) doc_hubs
-                    ORDER BY connection_count DESC
+                        ORDER BY path
+                    ) hubs
+                    ORDER BY connection_count DESC, path
                     LIMIT $2
                     """,
                     min_connections,
@@ -114,20 +122,17 @@ class HubAnalyzer:
             # Check if connection_count needs refresh
             await self._ensure_fresh_counts(threshold)
 
-            # Query orphans. Collapse to one row per document first, keyed to each
-            # doc's MOST-connected chunk: a note is only an orphan if even its best
-            # chunk is weakly connected. (Without this, a multi-chunk note lists once
-            # per chunk and a single isolated chunk can mislabel a connected doc.)
+            # Query orphans
             async with self.store.pool.acquire() as conn:
+                # One row per document (see get_hub_notes)
                 results = await conn.fetch(
                     """
-                    SELECT path, title, connection_count, modified_at
-                    FROM (
+                    SELECT path, title, connection_count, modified_at FROM (
                         SELECT DISTINCT ON (path) path, title, connection_count, modified_at
                         FROM notes
-                        ORDER BY path, connection_count DESC
-                    ) doc_max
-                    WHERE connection_count <= $1
+                        WHERE connection_count <= $1
+                        ORDER BY path
+                    ) orphans
                     ORDER BY connection_count ASC, modified_at DESC
                     LIMIT $2
                     """,
@@ -166,6 +171,18 @@ class HubAnalyzer:
         """
         try:
             async with self._refresh_lock:
+                # Counts computed by an older algorithm are wrong (not merely
+                # stale): refresh once and record the new algorithm version
+                algo = await self.store.get_metadata(_COUNT_ALGO_KEY)
+                if algo != _COUNT_ALGO_VERSION:
+                    logger.info(
+                        f"Connection-count algorithm changed "
+                        f"({algo or 'v1'} -> {_COUNT_ALGO_VERSION}), refreshing all counts..."
+                    )
+                    await self._do_refresh(threshold)
+                    await self.store.set_metadata(_COUNT_ALGO_KEY, _COUNT_ALGO_VERSION)
+                    return
+
                 async with self.store.pool.acquire() as conn:
                     stale_count = await conn.fetchval(
                         "SELECT COUNT(*) FROM notes WHERE connection_count = 0"
@@ -180,7 +197,13 @@ class HubAnalyzer:
                     await self._do_refresh(threshold)
 
         except Exception as e:
-            logger.warning(f"Failed to check count freshness: {e}")
+            # The version key stays unset on failure, so the migration retries
+            # on the next call rather than locking in wrong counts
+            logger.error(
+                f"Connection-count freshness check failed: {e}. "
+                f"Hub/orphan results may reflect counts from the old algorithm "
+                f"until a refresh succeeds."
+            )
 
     async def _do_refresh(self, threshold: float):
         """
@@ -204,9 +227,9 @@ class HubAnalyzer:
             batch_size = 100  # Process 100 notes at a time
 
             async with self.store.pool.acquire() as conn:
-                # Get total count for progress logging
+                # Get total count for progress logging (documents, not chunk rows)
                 total_notes = await conn.fetchval(
-                    "SELECT COUNT(*) FROM notes WHERE embedding IS NOT NULL"
+                    "SELECT COUNT(DISTINCT path) FROM notes WHERE embedding IS NOT NULL"
                 )
 
                 if total_notes == 0:
@@ -221,7 +244,7 @@ class HubAnalyzer:
                     # Get batch of note paths
                     batch_paths = await conn.fetch(
                         """
-                        SELECT path FROM notes
+                        SELECT DISTINCT path FROM notes
                         WHERE embedding IS NOT NULL
                         ORDER BY path
                         LIMIT $1 OFFSET $2
@@ -235,13 +258,17 @@ class HubAnalyzer:
 
                     # Update counts for this batch using a single efficient query
                     # Paths come from database (already validated on insertion), not user input
+                    # Count DISTINCT connected documents: a note connects to
+                    # another when ANY chunk pair crosses the threshold, and a
+                    # multi-chunk neighbor still counts once. Does not touch
+                    # last_indexed_at, which belongs to the file-freshness
+                    # tracking used by the startup scan.
                     await conn.execute(
                         """
                         UPDATE notes AS n
-                        SET connection_count = subq.cnt,
-                            last_indexed_at = CURRENT_TIMESTAMP
+                        SET connection_count = subq.cnt
                         FROM (
-                            SELECT n1.path, COUNT(n2.path) AS cnt
+                            SELECT n1.path, COUNT(DISTINCT n2.path) AS cnt
                             FROM notes n1
                             LEFT JOIN notes n2 ON n1.path != n2.path
                                 AND n2.embedding IS NOT NULL
@@ -263,4 +290,8 @@ class HubAnalyzer:
             logger.success(f"Connection count refresh complete ({total_notes} notes)")
 
         except Exception as e:
+            # Re-raise so callers can distinguish a failed refresh from a
+            # completed one; the algo-version migration must not be recorded
+            # as done when the refresh did not finish
             logger.error(f"Connection count refresh failed: {e}")
+            raise

@@ -36,6 +36,8 @@ def mock_store():
     store.replace_file_notes = AsyncMock(return_value=1)
     store.get_file_metadata = AsyncMock(return_value={})
     store.get_note_count = AsyncMock(return_value=0)
+    store.get_metadata = AsyncMock(return_value=None)
+    store.set_metadata = AsyncMock()
 
     # Methods for exclusion cleanup
     store.get_all_paths = AsyncMock(return_value=[])
@@ -68,7 +70,7 @@ def mock_embedder():
             "total_cached": 0,
             "cache_size_mb": 0.0,
             "cache_dir": "/tmp/cache",
-            "model": "voyage-context-3",
+            "model": "voyage-context-4",
         }
     )
 

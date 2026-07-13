@@ -88,9 +88,9 @@ async def test_bfs_prevents_cycles(mock_store):
     node_paths = [n["path"] for n in graph["nodes"]]
 
     # Each node should appear exactly once (no duplicates from cycles)
-    assert len(node_paths) == len(set(node_paths)), (
-        "Graph contains duplicate nodes (cycle detected!)"
-    )
+    assert len(node_paths) == len(
+        set(node_paths)
+    ), "Graph contains duplicate nodes (cycle detected!)"
 
     # Specifically check that A.md doesn't appear twice
     assert node_paths.count("A.md") <= 1

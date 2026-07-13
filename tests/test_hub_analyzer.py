@@ -244,6 +244,10 @@ async def test_staleness_check_triggers_refresh_when_needed(mock_store):
     """Test that staleness check triggers refresh when >50% notes stale."""
     analyzer = HubAnalyzer(mock_store)
 
+    # Counts already on the current algorithm: exercise the staleness branch,
+    # not the algo-version migration
+    mock_store.get_metadata = AsyncMock(return_value="2")
+
     # Mock database: 60% of notes have connection_count = 0 (stale)
     mock_conn = AsyncMock()
     mock_conn.fetchval = AsyncMock(side_effect=[600, 1000])  # stale_count  # total_count
@@ -273,6 +277,9 @@ async def test_staleness_check_skips_refresh_when_fresh(mock_store):
     """Test that staleness check skips refresh when counts are fresh."""
     analyzer = HubAnalyzer(mock_store)
 
+    # Counts already computed by the current algorithm
+    mock_store.get_metadata = AsyncMock(return_value="2")
+
     # Mock database: only 20% of notes stale (<50% threshold)
     mock_conn = AsyncMock()
     mock_conn.fetchval = AsyncMock(side_effect=[200, 1000])  # stale_count  # total_count
@@ -295,3 +302,32 @@ async def test_staleness_check_skips_refresh_when_fresh(mock_store):
 
     # Should NOT have triggered refresh (20% < 50% threshold)
     analyzer._do_refresh.assert_not_called()
+
+
+async def test_algo_version_mismatch_triggers_refresh(mock_store):
+    """Counts computed by an older algorithm are refreshed once and re-versioned."""
+    analyzer = HubAnalyzer(mock_store)
+
+    # No recorded algorithm version (database predates versioning)
+    mock_store.get_metadata = AsyncMock(return_value=None)
+    mock_store.set_metadata = AsyncMock()
+    analyzer._do_refresh = AsyncMock()
+
+    await analyzer._ensure_fresh_counts(0.5)
+
+    analyzer._do_refresh.assert_called_once()
+    mock_store.set_metadata.assert_called_once_with("connection_count_algo", "2")
+
+
+async def test_failed_migration_refresh_is_not_recorded(mock_store):
+    """A failed refresh must not stamp the algo version, so the migration retries."""
+    analyzer = HubAnalyzer(mock_store)
+
+    mock_store.get_metadata = AsyncMock(return_value=None)
+    mock_store.set_metadata = AsyncMock()
+    analyzer._do_refresh = AsyncMock(side_effect=RuntimeError("connection dropped mid-batch"))
+
+    # Must not raise (tool calls degrade, not crash), but must not record either
+    await analyzer._ensure_fresh_counts(0.5)
+
+    mock_store.set_metadata.assert_not_called()

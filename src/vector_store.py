@@ -19,10 +19,24 @@ from pgvector.asyncpg import register_vector
 
 from .exceptions import DatabaseError
 
-# Expected embedding dimensions. Defaults to 1024 (voyage-context-3 / Gemini /
+# Expected embedding dimensions. Defaults to 1024 (voyage-context-4 / Gemini /
 # Qwen3-0.6B); override via EMBEDDING_DIMENSIONS for other models (e.g. Qwen3-8B
 # at 4096). Must match the pgvector column width.
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "1024"))
+
+
+def embedding_signature(embedder) -> str:
+    """
+    Provider:model:dimensions fingerprint of the embedding configuration.
+
+    Written to index_metadata by full index runs and compared at server
+    startup: vectors from different providers, models, or dimensions are
+    not comparable, and on a multi-provider deployment any of the three
+    can drift independently.
+    """
+    provider = os.getenv("EMBEDDING_PROVIDER", "voyage").lower()
+    model = getattr(embedder, "model", "unknown")
+    return f"{provider}:{model}:{EMBEDDING_DIMENSIONS}"
 
 
 @dataclass
@@ -102,7 +116,9 @@ class PostgreSQLVectorStore:
                 f"@{self.host}:{self.port}/{quote_plus(self.database)}"
             )
 
-            self.pool = await asyncpg.create_pool(
+            # Assign self.pool only after verification succeeds; close the
+            # local pool on any post-creation failure so it never leaks
+            pool = await asyncpg.create_pool(
                 dsn,
                 min_size=self.min_connections,
                 max_size=self.max_connections,
@@ -110,55 +126,70 @@ class PostgreSQLVectorStore:
                 setup=self._setup_connection,
             )
 
-            # Verify pgvector extension
-            async with self.pool.acquire() as conn:
-                has_pgvector = await conn.fetchval(
-                    "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')"
-                )
-                if not has_pgvector:
-                    raise VectorStoreError("pgvector extension is not installed")
-
-                # Verify notes table exists
-                table_exists = await conn.fetchval(
-                    "SELECT EXISTS(SELECT 1 FROM information_schema.tables "
-                    "WHERE table_name = 'notes')"
-                )
-                if not table_exists:
-                    logger.warning("Notes table does not exist yet (will be created by schema.sql)")
-                else:
-                    vector_dimensions = await conn.fetchval(
-                        """
-                        SELECT atttypmod
-                        FROM pg_attribute
-                        WHERE attrelid = 'notes'::regclass AND attname = 'embedding'
-                        """
+            try:
+                # Verify pgvector extension
+                async with pool.acquire() as conn:
+                    has_pgvector = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')"
                     )
-                    if vector_dimensions != EMBEDDING_DIMENSIONS:
-                        note_count = await conn.fetchval("SELECT COUNT(*) FROM notes")
-                        if note_count:
-                            raise VectorStoreError(
-                                f"Database contains vector({vector_dimensions}) data but "
-                                f"EMBEDDING_DIMENSIONS={EMBEDDING_DIMENSIONS}"
-                            )
-                        await conn.execute("DROP INDEX IF EXISTS idx_notes_embedding_cosine")
-                        await conn.execute(
-                            f"ALTER TABLE notes ALTER COLUMN embedding "
-                            f"TYPE vector({EMBEDDING_DIMENSIONS})"  # nosec B608
+                    if not has_pgvector:
+                        raise VectorStoreError("pgvector extension is not installed")
+
+                    # Verify notes table exists
+                    table_exists = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM information_schema.tables "
+                        "WHERE table_name = 'notes')"
+                    )
+                    if not table_exists:
+                        logger.warning(
+                            "Notes table does not exist yet (will be created by schema.sql)"
                         )
-                        if EMBEDDING_DIMENSIONS <= 2000:
+                    else:
+                        vector_dimensions = await conn.fetchval("""
+                            SELECT atttypmod
+                            FROM pg_attribute
+                            WHERE attrelid = 'notes'::regclass AND attname = 'embedding'
+                            """)
+                        if vector_dimensions != EMBEDDING_DIMENSIONS:
+                            note_count = await conn.fetchval("SELECT COUNT(*) FROM notes")
+                            if note_count:
+                                raise VectorStoreError(
+                                    f"Database contains vector({vector_dimensions}) data but "
+                                    f"EMBEDDING_DIMENSIONS={EMBEDDING_DIMENSIONS}"
+                                )
+                            await conn.execute("DROP INDEX IF EXISTS idx_notes_embedding_cosine")
                             await conn.execute(
-                                """
-                                CREATE INDEX idx_notes_embedding_cosine
-                                ON notes USING hnsw (embedding vector_cosine_ops)
-                                WITH (m = 16, ef_construction = 64)
-                                """
+                                f"ALTER TABLE notes ALTER COLUMN embedding "
+                                f"TYPE vector({EMBEDDING_DIMENSIONS})"  # nosec B608
                             )
-                    # Migration: remove trigger that overwrites file mtime (existing databases)
-                    await conn.execute(
-                        "DROP TRIGGER IF EXISTS trigger_update_notes_modified_at ON notes"
-                    )
-                    await conn.execute("DROP FUNCTION IF EXISTS update_modified_at()")
+                            if EMBEDDING_DIMENSIONS <= 2000:
+                                await conn.execute("""
+                                    CREATE INDEX idx_notes_embedding_cosine
+                                    ON notes USING hnsw (embedding vector_cosine_ops)
+                                    WITH (m = 16, ef_construction = 64)
+                                    """)
+                        # Migration: remove trigger that overwrites file mtime
+                        # (existing databases)
+                        await conn.execute(
+                            "DROP TRIGGER IF EXISTS trigger_update_notes_modified_at ON notes"
+                        )
+                        await conn.execute("DROP FUNCTION IF EXISTS update_modified_at()")
 
+                    # Migration: corpus-level metadata (e.g. which embedding model built
+                    # the index); created here so existing databases get it without
+                    # re-running schema.sql
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS index_metadata (
+                            key TEXT PRIMARY KEY,
+                            value TEXT NOT NULL,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                        )
+                        """)
+            except BaseException:
+                await pool.close()
+                raise
+
+            self.pool = pool
             logger.info(f"PostgreSQL connected: {self.max_connections} max connections")
 
         except asyncpg.PostgresError as e:
@@ -181,6 +212,36 @@ class PostgreSQLVectorStore:
             await self.pool.close()
             self.pool = None
             logger.debug("PostgreSQL connection pool closed")
+
+    async def get_metadata(self, key: str) -> str | None:
+        """Read a corpus-level metadata value (e.g. 'embedding_model')."""
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+
+        async with self.pool.acquire() as conn:
+            return await self._with_timeout(
+                conn.fetchval("SELECT value FROM index_metadata WHERE key = $1", key)
+            )
+
+    async def set_metadata(self, key: str, value: str) -> None:
+        """Write a corpus-level metadata value."""
+        if not self.pool:
+            raise VectorStoreError("PostgreSQL store not initialized")
+
+        async with self.pool.acquire() as conn:
+            await self._with_timeout(
+                conn.execute(
+                    """
+                    INSERT INTO index_metadata (key, value, updated_at)
+                    VALUES ($1, $2, CURRENT_TIMESTAMP)
+                    ON CONFLICT (key) DO UPDATE SET
+                        value = EXCLUDED.value,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    key,
+                    value,
+                )
+            )
 
     async def search(
         self, query_embedding: list[float], limit: int = 10, threshold: float = 0.5
@@ -211,16 +272,21 @@ class PostgreSQLVectorStore:
             # Similarity: 1 = identical, 0 = opposite
             distance_threshold = 1.0 - threshold
 
+            # One result per note: chunked notes are collapsed to their
+            # best-matching chunk so a single long note cannot fill the results
             query = """
-                SELECT
-                    path,
-                    title,
-                    content,
-                    1.0 - (embedding <=> $1::vector) AS similarity
-                FROM notes
-                WHERE embedding IS NOT NULL
-                    AND (embedding <=> $1::vector) <= $2
-                ORDER BY embedding <=> $1::vector
+                SELECT path, title, content, similarity FROM (
+                    SELECT DISTINCT ON (path)
+                        path,
+                        title,
+                        content,
+                        1.0 - (embedding <=> $1::vector) AS similarity
+                    FROM notes
+                    WHERE embedding IS NOT NULL
+                        AND (embedding <=> $1::vector) <= $2
+                    ORDER BY path, embedding <=> $1::vector
+                ) best_chunk_per_note
+                ORDER BY similarity DESC, path
                 LIMIT $3
             """
 
@@ -297,26 +363,54 @@ class PostgreSQLVectorStore:
 
         try:
             async with self.pool.acquire() as conn:
-                # Fetch source note's embedding
-                source_embedding = await self._with_timeout(
-                    conn.fetchval("SELECT embedding FROM notes WHERE path = $1", note_path),
+                exists = await self._with_timeout(
+                    conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM notes "
+                        "WHERE path = $1 AND embedding IS NOT NULL)",
+                        note_path,
+                    ),
                     timeout=5.0,
                 )
+                if not exists:
+                    raise VectorStoreError(f"Note not found (or has no embedding): {note_path}")
 
-                if source_embedding is None:
-                    raise VectorStoreError(f"Note not found: {note_path}")
-
-                # Search using source embedding (exclude self)
-                results = await self.search(
-                    query_embedding=list(source_embedding),
-                    limit=limit + 1,  # +1 to account for self exclusion
-                    threshold=threshold,
+                # Any-chunk-to-any-chunk comparison, collapsed to the best match
+                # per target note, with self excluded in SQL. One pooled
+                # connection for both statements, so a one-connection pool
+                # cannot deadlock.
+                query = """
+                    SELECT path, title, content, similarity FROM (
+                        SELECT DISTINCT ON (n2.path)
+                            n2.path,
+                            n2.title,
+                            n2.content,
+                            1.0 - (n1.embedding <=> n2.embedding) AS similarity
+                        FROM notes n1
+                        JOIN notes n2 ON n2.path != n1.path
+                        WHERE n1.path = $1
+                            AND n1.embedding IS NOT NULL
+                            AND n2.embedding IS NOT NULL
+                            AND (n1.embedding <=> n2.embedding) <= $2
+                        ORDER BY n2.path, n1.embedding <=> n2.embedding
+                    ) best_chunk_per_note
+                    ORDER BY similarity DESC, path
+                    LIMIT $3
+                """
+                rows = await self._with_timeout(
+                    conn.fetch(query, note_path, 1.0 - threshold, limit)
                 )
+                return [
+                    SearchResult(
+                        path=row["path"],
+                        title=row["title"],
+                        content=row["content"],
+                        similarity=float(row["similarity"]),
+                    )
+                    for row in rows
+                ]
 
-                # Remove self from results
-                results = [r for r in results if r.path != note_path]
-                return results[:limit]
-
+        except VectorStoreError:
+            raise
         except TimeoutError as e:
             raise VectorStoreError("Similar notes search timed out") from e
         except Exception as e:
@@ -386,6 +480,11 @@ class PostgreSQLVectorStore:
         """
         Insert or update multiple notes in a batch.
 
+        The batch must contain the COMPLETE chunk set for every path it
+        includes: in the same transaction, chunk rows at or beyond each
+        path's total_chunks are deleted, so a note that shrank on re-index
+        cannot keep stale chunks searchable (atomic replacement).
+
         Returns:
             Number of notes processed
         """
@@ -404,6 +503,21 @@ class PostgreSQLVectorStore:
                 raise VectorStoreError(
                     f"Note embedding must be {EMBEDDING_DIMENSIONS} dimensions, "
                     f"got {len(note.embedding)} for note: {note.path}"
+                )
+
+        # Enforce the complete-chunk-set contract: a partial or inconsistent
+        # batch would silently delete live chunks via the stale-chunk cleanup
+        by_path: dict[str, list[Note]] = {}
+        for note in notes:
+            by_path.setdefault(note.path, []).append(note)
+        for note_path, path_notes in by_path.items():
+            totals = {n.total_chunks for n in path_notes}
+            indexes = {n.chunk_index for n in path_notes}
+            if len(totals) != 1 or indexes != set(range(next(iter(totals)))):
+                raise VectorStoreError(
+                    f"upsert_batch requires the complete chunk set per path: "
+                    f"'{note_path}' has chunk_index {sorted(indexes)} with "
+                    f"total_chunks {sorted(totals)}"
                 )
 
         try:
@@ -436,12 +550,25 @@ class PostgreSQLVectorStore:
                 for n in notes
             ]
 
+            chunk_totals = {n.path: n.total_chunks for n in notes}
+
             async with self.pool.acquire() as conn:
                 async with conn.transaction():
                     await self._with_timeout(
                         conn.executemany(query, batch_data),
                         timeout=30.0,
                     )
+                    # Same transaction: drop chunk rows beyond each path's new
+                    # chunk count so replacement is atomic (no crash window
+                    # between upsert and stale-chunk cleanup)
+                    for note_path, chunk_total in chunk_totals.items():
+                        await self._with_timeout(
+                            conn.execute(
+                                "DELETE FROM notes WHERE path = $1 AND chunk_index >= $2",
+                                note_path,
+                                chunk_total,
+                            )
+                        )
 
             logger.info(f"Batch upserted {len(notes)} notes")
             return len(notes)
@@ -497,14 +624,12 @@ class PostgreSQLVectorStore:
         if not self.pool:
             raise VectorStoreError("PostgreSQL store not initialized")
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT path, MAX(modified_at) AS modified_at,
                        MAX(file_size_bytes) AS file_size_bytes
                 FROM notes
                 GROUP BY path
-                """
-            )
+                """)
         return {row["path"]: (row["modified_at"], row["file_size_bytes"]) for row in rows}
 
     async def get_note_count(self) -> int:

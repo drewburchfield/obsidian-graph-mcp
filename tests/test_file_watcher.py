@@ -156,7 +156,7 @@ async def test_file_watcher_debounces_rapid_edits(tmp_vault, mock_store, mock_em
     # Simulate 5 rapid changes
     file_path = str(test_file)
     for i in range(5):
-        watcher.pending_changes[file_path] = time.time()
+        watcher.pending_changes[file_path] = time.monotonic()
         asyncio.create_task(watcher._debounced_reindex(file_path))
         await asyncio.sleep(0.05)  # 50ms between edits
 
@@ -165,6 +165,53 @@ async def test_file_watcher_debounces_rapid_edits(tmp_vault, mock_store, mock_em
 
     # Should have exactly 1 re-index
     assert reindex_count == 1, f"Expected 1 re-index, got {reindex_count}"
+
+
+@pytest.mark.asyncio
+async def test_debounce_resleeps_when_timestamp_refreshed_without_new_task(
+    tmp_vault, mock_store, mock_embedder
+):
+    """
+    A refreshed pending timestamp with NO new coroutine must still be indexed.
+
+    Regression test for the lost-event bug: the old code returned early on
+    "a more recent change is pending", assuming another coroutine existed for
+    it; when none did (timer jitter, or this exact scenario), the file stayed
+    unindexed until its next change.
+    """
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=0.3,
+    )
+
+    test_file = tmp_vault / "resleep.md"
+    test_file.write_text("# Test")
+    file_path = str(test_file)
+
+    reindex_count = 0
+
+    async def track_reindex(path):
+        nonlocal reindex_count
+        reindex_count += 1
+
+    watcher._reindex_file = track_reindex
+
+    # One event, one coroutine
+    watcher.pending_changes[file_path] = time.monotonic()
+    task = asyncio.create_task(watcher._debounced_reindex(file_path))
+
+    # Mid-debounce, refresh the timestamp WITHOUT spawning a new coroutine
+    await asyncio.sleep(0.15)
+    watcher.pending_changes[file_path] = time.monotonic()
+
+    # The single coroutine must re-sleep the remainder and then index
+    await asyncio.wait_for(task, timeout=2.0)
+    assert reindex_count == 1, f"Expected 1 re-index, got {reindex_count}"
+    assert file_path not in watcher.pending_changes
 
 
 @pytest.mark.asyncio
@@ -190,13 +237,14 @@ async def test_file_watcher_handles_empty_files(tmp_vault, mock_store, mock_embe
     # Trigger re-index
     await watcher._reindex_file(str(empty_file))
 
-    # Should not crash, and should not call upsert_note (returns early on EmbeddingError)
+    # Should not crash, and should not write anything (returns early on EmbeddingError)
     mock_store.upsert_note.assert_not_called()
+    mock_store.upsert_batch.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_lock_map_is_bounded_by_touched_paths(tmp_vault, mock_store, mock_embedder):
-    """Stable locks remain bounded by the finite set of touched corpus paths."""
+    """Completed re-indexes release their locks, so the map never grows unbounded."""
     loop = asyncio.get_running_loop()
     watcher = ObsidianFileWatcher(
         vault_path=str(tmp_vault),
@@ -212,10 +260,12 @@ async def test_lock_map_is_bounded_by_touched_paths(tmp_vault, mock_store, mock_
     # Process many files
     for i in range(100):
         file_path = str(tmp_vault / f"test_{i}.md")
-        watcher.pending_changes[file_path] = time.time()
+        watcher.pending_changes[file_path] = time.monotonic()
         await watcher._debounced_reindex(file_path)
 
-    assert len(watcher._reindex_locks) == 100
+    # Guarded cleanup removes each lock once its reindex finishes (no pending
+    # change, not held, no waiters), keeping memory bounded
+    assert len(watcher._reindex_locks) == 0
 
 
 @pytest.mark.asyncio
@@ -243,10 +293,10 @@ async def test_same_path_reindexes_never_overlap(tmp_vault, mock_store, mock_emb
         active -= 1
 
     watcher._reindex_file = blocking_reindex
-    watcher.pending_changes[path] = time.time()
+    watcher.pending_changes[path] = time.monotonic()
     first = asyncio.create_task(watcher._debounced_reindex(path))
     await first_started.wait()
-    watcher.pending_changes[path] = time.time()
+    watcher.pending_changes[path] = time.monotonic()
     second = asyncio.create_task(watcher._debounced_reindex(path))
     await asyncio.sleep(0)
 
@@ -294,9 +344,9 @@ async def test_vault_watcher_startup_scan_detects_stale_files(tmp_vault, mock_st
 
         # Should have detected stale files (note1.md, note2.md, folder/note3.md)
         # Empty.md might be skipped
-        assert vault_watcher.event_handler._reindex_file.call_count >= 3, (
-            "Expected at least 3 stale files detected"
-        )
+        assert (
+            vault_watcher.event_handler._reindex_file.call_count >= 3
+        ), "Expected at least 3 stale files detected"
     finally:
         vault_watcher.stop()
 
@@ -329,6 +379,39 @@ async def test_get_lock_for_file_creates_new_locks(tmp_vault, mock_store, mock_e
     lock3 = await watcher._get_lock_for_file("/vault/test2.md")
     assert len(watcher._reindex_locks) == 2
     assert lock3 is not lock1
+
+
+@pytest.mark.asyncio
+async def test_cleanup_lock_removes_unused_locks(tmp_vault, mock_store, mock_embedder):
+    """Test that _cleanup_lock removes locks when no pending changes."""
+    loop = asyncio.get_running_loop()
+    watcher = ObsidianFileWatcher(
+        vault_path=str(tmp_vault),
+        store=mock_store,
+        embedder=mock_embedder,
+        loop=loop,
+        debounce_seconds=1,
+    )
+
+    file_path = "/vault/test.md"
+
+    # Create lock
+    await watcher._get_lock_for_file(file_path)
+    assert len(watcher._reindex_locks) == 1
+
+    # Cleanup with no pending changes
+    await watcher._cleanup_lock(file_path)
+    assert len(watcher._reindex_locks) == 0
+
+    # Create lock again
+    await watcher._get_lock_for_file(file_path)
+
+    # Add pending change
+    watcher.pending_changes[file_path] = time.monotonic()
+
+    # Cleanup should NOT remove lock (pending change exists)
+    await watcher._cleanup_lock(file_path)
+    assert len(watcher._reindex_locks) == 1
 
 
 @pytest.mark.asyncio

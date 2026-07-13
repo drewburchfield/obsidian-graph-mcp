@@ -73,20 +73,22 @@ async def test_file_watcher_concurrent_debounce_race(tmp_path):
     file_path = str(test_file)
     tasks = []
     for i in range(10):
-        watcher.pending_changes[file_path] = time.time()
+        watcher.pending_changes[file_path] = time.monotonic()
         task = asyncio.create_task(watcher._debounced_reindex(file_path))
         tasks.append(task)
         await asyncio.sleep(0.01)  # 10ms between modifications
 
-    # Wait for all debounce periods to complete
-    await asyncio.sleep(1.5)
+    # Await every spawned task: a fixed sleep can race a slow runner, and
+    # exceptions raised inside tasks would otherwise never surface here
+    await asyncio.wait_for(asyncio.gather(*tasks), timeout=10.0)
 
     # Assert: Should have exactly 1 re-index, not 10
     # This will FAIL without proper locking (race condition exists)
     # This will PASS after fix is applied
-    assert reindex_count == 1, (
-        f"Expected 1 re-index for same file, got {reindex_count} (RACE CONDITION!)"
-    )
+    assert (
+        reindex_count == 1
+    ), f"Expected 1 re-index for same file, got {reindex_count} (RACE CONDITION!)"
+    assert file_path not in watcher.pending_changes
 
 
 @pytest.mark.asyncio
@@ -130,14 +132,15 @@ async def test_file_watcher_different_files_concurrent(tmp_path):
 
     watcher._reindex_file = tracked_reindex
 
-    # Trigger re-index for each file
+    # Trigger re-index for each file, retaining tasks so completion (and any
+    # task exception) is awaited rather than guessed with a sleep
+    tasks = []
     for f in files:
         file_path = str(f)
-        watcher.pending_changes[file_path] = time.time()
-        asyncio.create_task(watcher._debounced_reindex(file_path))
+        watcher.pending_changes[file_path] = time.monotonic()
+        tasks.append(asyncio.create_task(watcher._debounced_reindex(file_path)))
 
-    # Wait for all debounces
-    await asyncio.sleep(0.5)
+    await asyncio.wait_for(asyncio.gather(*tasks), timeout=10.0)
 
     # Each file should have exactly 1 re-index
     assert len(reindex_counts) == 5, f"Expected 5 files re-indexed, got {len(reindex_counts)}"
@@ -173,6 +176,10 @@ async def test_hub_analyzer_concurrent_refresh_race():
 
     mock_store = MagicMock()
     mock_store.pool = mock_pool
+    # Counts already computed by the current algorithm: this test exercises
+    # the staleness path, not the algorithm-version migration
+    mock_store.get_metadata = AsyncMock(return_value="2")
+    mock_store.set_metadata = AsyncMock()
 
     analyzer = HubAnalyzer(mock_store)
 
@@ -265,21 +272,20 @@ async def test_file_watcher_stress_many_files(tmp_path):
 
     watcher._reindex_file = tracked_reindex
 
-    # Simulate 5 rapid edits per file
+    # Simulate 5 rapid edits per file, retaining every task
+    tasks = []
     for file in files:
         for edit_num in range(5):
             file_path = str(file)
-            watcher.pending_changes[file_path] = time.time()
-            asyncio.create_task(watcher._debounced_reindex(file_path))
+            watcher.pending_changes[file_path] = time.monotonic()
+            tasks.append(asyncio.create_task(watcher._debounced_reindex(file_path)))
             await asyncio.sleep(0.001)  # 1ms between edits
 
-    # Wait for all debounce periods (0.3s debounce + processing time)
-    await asyncio.sleep(2.0)
+    # Await all debounce tasks: completion is deterministic, so the guarantee
+    # is exactly one re-index per file (no timing-based loss tolerance)
+    await asyncio.wait_for(asyncio.gather(*tasks), timeout=30.0)
 
-    # Verify: Each file should be re-indexed at most once.
-    # Due to timing variations, some files may not complete their debounce cycles.
-    # We verify that we got a reasonable number (at least 80% of files).
-    assert reindex_count >= 40, f"Expected at least 40 re-indexes, got {reindex_count}"
-    assert reindex_count <= 50, (
-        f"Expected at most 50 re-indexes (one per file), got {reindex_count}"
-    )
+    assert (
+        reindex_count == 50
+    ), f"Expected exactly 50 re-indexes (one per file), got {reindex_count}"
+    assert not watcher.pending_changes

@@ -25,6 +25,15 @@ services:
       - OBSIDIAN_DEBOUNCE_SECONDS=${CONSULTING_DEBOUNCE_SECONDS:-10}
       - OBSIDIAN_WATCH_USE_POLLING=true
       - OBSIDIAN_WATCH_POLLING_INTERVAL=${CONSULTING_POLLING_INTERVAL:-30}
+      # Primary: OpenRouter qwen3-embedding-8b (~$0.01/M tokens) + Cohere rerank.
+      # Backup if OpenRouter sours: switch to Voyage by setting
+      #   EMBEDDING_PROVIDER=voyage
+      #   VOYAGE_MODEL=voyage-context-4     # $0.12/M after its 200M free tier
+      #   EMBEDDING_DIMENSIONS=1024         # column width auto-migrates when table is empty
+      # (VoyageEmbedder uses contextualized_embed, so only voyage-context-* models work.
+      # Note context models re-embed the WHOLE document on any change: pricier under churn.)
+      # Vectors across providers/models/dims are NOT comparable: a switch requires a
+      # full re-index (the server detects drift via the stored embedding signature).
       - EMBEDDING_PROVIDER=openrouter
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - OPENROUTER_EMBED_MODEL=qwen/qwen3-embedding-8b

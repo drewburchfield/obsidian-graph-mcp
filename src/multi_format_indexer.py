@@ -22,7 +22,7 @@ from loguru import logger
 from .converters import SUPPORTED_EXTS, convert_file
 from .exceptions import EmbeddingError
 from .exclusion import ExclusionFilter, load_exclusion_filter
-from .vector_store import Note, PostgreSQLVectorStore
+from .vector_store import Note, PostgreSQLVectorStore, embedding_signature
 
 # Directory names that never contain authored documents.
 EXCLUDED_DIR_NAMES = {
@@ -236,5 +236,9 @@ async def index_root(
             f"{len(failed)} files failed:\n"
             + "\n".join(f"  - {Path(f['path']).name}: {f['error']}" for f in failed[:10])
         )
+    else:
+        # Record the embedding configuration only after a fully successful
+        # index run (the server compares this at startup to detect drift)
+        await store.set_metadata("embedding_signature", embedding_signature(embedder))
     logger.success(f"Index complete: {summary}")
     return summary
