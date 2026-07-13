@@ -23,20 +23,63 @@ from dotenv import load_dotenv
 
 REPO = Path(__file__).resolve().parent.parent
 load_dotenv(REPO / ".env", override=True)
+
+# Matryoshka parametrization (default = the 4096 control on the live DB, so an
+# un-parametrized run is byte-for-byte the original harness). EVAL_DIMS is the
+# width of the index/column being searched; EVAL_DB is which database holds it.
+# Query embeddings are ALWAYS generated at 4096 (OPENROUTER_EMBED_DIMS) so the
+# provider cache stays width-stable across runs; the query vector is truncated +
+# L2-renormalized to EVAL_DIMS in-process (see _MRLQueryEmbedder), matching how
+# make_mrl_index.py derived the truncated document vectors. EMBEDDING_DIMENSIONS
+# must equal EVAL_DIMS so vector_store's search/dimension validation lines up.
+_EVAL_DIMS = int(os.getenv("EVAL_DIMS", "4096"))
+_EVAL_DB = os.getenv("EVAL_DB", "consulting_graph")
 os.environ.update(
     {
         "EMBEDDING_PROVIDER": "openrouter",
         "OPENROUTER_EMBED_MODEL": "qwen/qwen3-embedding-8b",
         "OPENROUTER_EMBED_DIMS": "4096",
-        "EMBEDDING_DIMENSIONS": "4096",
+        "EMBEDDING_DIMENSIONS": str(_EVAL_DIMS),
         "RERANK_MODEL": "cohere/rerank-v3.5",
         "RERANK_POOL": "50",
     }
 )
 sys.path.insert(0, str(REPO))
+import numpy as np  # noqa: E402
 import src.tools as tools  # noqa: E402
 from src.server import make_embedder  # noqa: E402
 from src.vector_store import PostgreSQLVectorStore  # noqa: E402
+
+
+def mrl_truncate(vec: list[float], dims: int) -> list[float]:
+    """Truncate a full-width embedding to its first ``dims`` components and
+    L2-renormalize, exactly as make_mrl_index.py transformed the stored
+    document vectors. Renorm is ranking-irrelevant for pgvector's cosine
+    ``<=>`` but kept for parity with the index build."""
+    trunc = np.asarray(vec[:dims], dtype=np.float32)
+    norm = float(np.linalg.norm(trunc))
+    if norm > 0.0:
+        trunc = trunc / norm
+    return trunc.tolist()
+
+
+class _MRLQueryEmbedder:
+    """Wraps a full-width (4096d) embedder and returns every query vector
+    truncated + renormalized to ``dims`` so a 4096d query can search a
+    truncated MRL index. The inner embedder still fetches/caches at 4096, so
+    the provider cache is shared across dims and never poisoned."""
+
+    def __init__(self, inner, dims: int):
+        self._inner = inner
+        self._dims = dims
+        self.model = getattr(inner, "model", "unknown")
+
+    async def embed(self, text, input_type="document", use_cache=True):
+        return mrl_truncate(await self._inner.embed(text, input_type, use_cache), self._dims)
+
+    async def embed_batch(self, texts, input_type="document", use_cache=True):
+        vecs = await self._inner.embed_batch(texts, input_type, use_cache)
+        return [None if v is None else mrl_truncate(v, self._dims) for v in vecs]
 
 
 def _norm(value: str | None) -> str:
@@ -57,7 +100,7 @@ async def main() -> int:
     store = PostgreSQLVectorStore(
         host="localhost",
         port=5434,
-        database="consulting_graph",
+        database=_EVAL_DB,
         user="obsidian",
         password=os.getenv("POSTGRES_PASSWORD"),
     )
@@ -87,9 +130,10 @@ async def main() -> int:
         )
         return 1
 
-    ctx = tools.ToolContext(
-        store=store, embedder=make_embedder(), graph_builder=None, hub_analyzer=None
-    )
+    embedder = make_embedder()
+    if _EVAL_DIMS != 4096:
+        embedder = _MRLQueryEmbedder(embedder, _EVAL_DIMS)
+    ctx = tools.ToolContext(store=store, embedder=embedder, graph_builder=None, hub_analyzer=None)
     # Prime query embeddings in provider-sized batches so a full quality run
     # does not spend one network round trip per question.
     await ctx.embedder.embed_batch([g["query"] for g in active_golden], input_type="query")
@@ -122,7 +166,10 @@ async def main() -> int:
 
     n = len(active_golden)
     mode = "DENSE-ONLY (baseline)" if args.baseline else "FULL PIPELINE (hybrid+rerank)"
-    print(f"\n=== consulting-graph eval [{mode}]: {n} reachable gold queries ===")
+    print(
+        f"\n=== consulting-graph eval [{mode}] "
+        f"db={_EVAL_DB} dims={_EVAL_DIMS}: {n} reachable gold queries ==="
+    )
     print(f"  Gold coverage {n}/{len(golden)} ({gold_coverage:.3f})")
     for k in ks:
         print(f"  Recall@{k:<2} {hits[k] / n:.3f}")
@@ -132,6 +179,8 @@ async def main() -> int:
         print(f"  misses ({len(misses)}): " + "; ".join(misses[:5]))
     out = {
         "mode": mode,
+        "db": _EVAL_DB,
+        "dims": _EVAL_DIMS,
         "n": n,
         "gold_total": len(golden),
         "gold_coverage": round(gold_coverage, 3),
@@ -141,11 +190,11 @@ async def main() -> int:
         "misses": misses,
         "unreachable": [g["path"] for g in unreachable],
     }
-    json.dump(
-        out,
-        open(REPO / "evals" / ("results_baseline.json" if args.baseline else "results.json"), "w"),
-        indent=2,
-    )
+    # Namespace the result file by db so parametrized runs never clobber the
+    # 4096 control's results.json.
+    suffix = "_baseline" if args.baseline else ""
+    stem = "results" if _EVAL_DB == "consulting_graph" else f"results_{_EVAL_DB}"
+    json.dump(out, open(REPO / "evals" / f"{stem}{suffix}.json", "w"), indent=2)
     if not args.baseline and (hits[5] / n < args.min_r5 or hits[20] / n < args.min_r20):
         print(
             f"  QUALITY GATE FAILED: require R@5 >= {args.min_r5:.2f} "

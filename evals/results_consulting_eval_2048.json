@@ -1,0 +1,39 @@
+{
+  "mode": "FULL PIPELINE (hybrid+rerank)",
+  "db": "consulting_eval_2048",
+  "dims": 2048,
+  "n": 52,
+  "gold_total": 66,
+  "gold_coverage": 0.788,
+  "R@1": 0.404,
+  "R@5": 0.75,
+  "R@10": 0.788,
+  "R@20": 0.865,
+  "MRR": 0.548,
+  "nDCG@10": 0.603,
+  "misses": [
+    "Which external plugins are required to process international",
+    "How can users extract valuable responses from a conversation",
+    "What is the registered corporate name and location associate",
+    "example of using ai to quickly build presentation slides",
+    "7 copilot habits that save time document location",
+    "power user examples of copilot in outlook and excel",
+    "using copilot to get actionable items from operations report"
+  ],
+  "unreachable": [
+    "medvet/meetings/transcript-2026-04-15.md",
+    "medvet/meetings/transcript-2026-04-15.md",
+    "medvet/meetings/transcript-2026-04-15.md",
+    "medvet/meetings/transcript-2026-04-15.md",
+    "templates/select platform/AI Platform Selection Framework - Drew Burchfield.pdf",
+    "uproxx/research/business-intelligence-brief.md",
+    "uproxx/research/business-intelligence-brief.md",
+    "uproxx/research/chartmetric-schema-design.md",
+    "uproxx/research/comscore-api-research.md",
+    "thompson/discovery/received-2026-06-01/analysis-service-sql.md",
+    "uproxx/delivery/data-field-inventory.md",
+    "uproxx/delivery/engineering-plan-uproxx-data-platform.md",
+    "uproxx/delivery/engineering-plan-uproxx-data-platform.md",
+    "uproxx/delivery/tdd-uproxx-data-platform-v3.md"
+  ]
+}
