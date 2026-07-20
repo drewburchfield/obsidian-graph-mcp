@@ -39,6 +39,78 @@ async def test_reconcile_leaves_unchanged_file_unembedded(tmp_path, mock_store, 
 
 
 @pytest.mark.asyncio
+async def test_reconcile_skips_empty_file_without_degrading(tmp_path, mock_store, mock_embedder):
+    (tmp_path / "empty.txt").touch()
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".txt"})
+
+    summary = await sync.reconcile()
+
+    assert summary.scanned == 1
+    assert summary.skipped == 1
+    assert summary.added == 0
+    assert summary.failed == 0
+    mock_embedder.embed_with_chunks.assert_not_awaited()
+    mock_store.replace_file_notes.assert_not_awaited()
+    state = json.loads(sync.state_path.read_text())
+    assert state["status"] == "ready"
+    assert state["summary"]["skipped"] == 1
+
+
+@pytest.mark.asyncio
+async def test_reconcile_removes_indexed_file_that_becomes_empty(
+    tmp_path, mock_store, mock_embedder
+):
+    path = tmp_path / "emptied.txt"
+    path.touch()
+    mock_store.get_file_metadata.return_value = {"emptied.txt": (datetime.now(UTC), 42)}
+    mock_store.delete_notes_by_paths.return_value = 1
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".txt"})
+
+    summary = await sync.reconcile()
+
+    assert summary.skipped == 1
+    assert summary.removed == 1
+    assert summary.failed == 0
+    mock_store.delete_notes_by_paths.assert_awaited_once_with(["emptied.txt"])
+    mock_embedder.embed_with_chunks.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reconcile_indexes_empty_file_after_content_is_added(
+    tmp_path, mock_store, mock_embedder
+):
+    path = tmp_path / "restored.txt"
+    path.touch()
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".txt"})
+
+    empty_summary = await sync.reconcile()
+    path.write_text("now indexable")
+    restored_summary = await sync.reconcile()
+
+    assert empty_summary.skipped == 1
+    assert restored_summary.skipped == 0
+    assert restored_summary.added == 1
+    assert restored_summary.failed == 0
+    mock_store.replace_file_notes.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_reindex_empty_file_removes_previous_chunks(tmp_path, mock_store, mock_embedder):
+    path = tmp_path / "emptied.txt"
+    path.touch()
+    mock_store.delete_notes_by_paths.return_value = 2
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".txt"})
+
+    assert await sync.reindex_file(path)
+
+    mock_store.delete_notes_by_paths.assert_awaited_once_with(["emptied.txt"])
+    mock_embedder.embed_with_chunks.assert_not_awaited()
+    state = json.loads(sync.state_path.read_text())
+    assert state["status"] == "ready"
+    assert state["last_event"] == "skip_empty"
+
+
+@pytest.mark.asyncio
 async def test_reconcile_removes_missing_and_excluded_paths(tmp_path, mock_store, mock_embedder):
     mock_store.get_file_metadata.return_value = {
         "deleted.md": (datetime.now(UTC), 10),

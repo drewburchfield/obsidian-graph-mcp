@@ -7,6 +7,7 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 
 from loguru import logger
@@ -25,6 +26,14 @@ class ReconcileSummary:
     unchanged: int
     removed: int
     failed: int
+    skipped: int = 0
+
+
+class IndexOutcome(StrEnum):
+    """Successful outcomes for a single-file indexing attempt."""
+
+    INDEXED = "indexed"
+    SKIPPED = "skipped"
 
 
 class CorpusSynchronizer:
@@ -90,12 +99,26 @@ class CorpusSynchronizer:
             self._write_state("ready", last_event="remove", path=rel_path)
         return removed
 
+    async def _skip_empty_file(self, rel_path: str) -> IndexOutcome:
+        """Remove stale chunks for an empty file and publish a healthy outcome."""
+        removed = await self.store.delete_notes_by_paths([rel_path])
+        self._write_state(
+            "syncing" if self._reconciling else "ready",
+            last_event="skip_empty",
+            path=rel_path,
+        )
+        logger.info(f"Skipped empty file {rel_path}; removed {removed} previously indexed chunks")
+        return IndexOutcome.SKIPPED
+
     async def reindex_file(
         self, path: str | Path, *, allow_metadata_fallback: bool = False
-    ) -> bool:
+    ) -> IndexOutcome | None:
         file_path = Path(path)
         if not self.is_eligible(file_path) or not file_path.is_file():
-            return False
+            return None
+        rel_path = str(file_path.relative_to(self.root))
+        if file_path.stat().st_size == 0:
+            return await self._skip_empty_file(rel_path)
         try:
             content = convert_file(file_path, raise_errors=True)
         except Exception as exc:  # noqa: BLE001 - preserve the last valid indexed version
@@ -109,13 +132,11 @@ class CorpusSynchronizer:
                     self._write_state(
                         "degraded", last_event="conversion_failed", path=str(file_path)
                     )
-                return False
+                return None
             content = None
         if not content:
             if file_path.stat().st_size == 0:
-                logger.warning(f"Skipping empty file: {file_path}")
-                return False
-            rel_path = str(file_path.relative_to(self.root))
+                return await self._skip_empty_file(rel_path)
             content = (
                 f"# {file_path.stem}\n\n"
                 f"File: {rel_path}\n"
@@ -124,7 +145,6 @@ class CorpusSynchronizer:
             )
             logger.info(f"Indexing metadata fallback for {rel_path}")
 
-        rel_path = str(file_path.relative_to(self.root))
         try:
             embeddings, total_chunks = await self.embedder.embed_with_chunks(
                 content, chunk_size=2000, input_type="document"
@@ -135,7 +155,7 @@ class CorpusSynchronizer:
                 self._write_state("syncing", last_event="embedding_failed", path=rel_path)
             else:
                 self._write_state("degraded", last_event="embedding_failed", path=rel_path)
-            return False
+            return None
 
         stat = file_path.stat()
         modified_at = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
@@ -161,14 +181,14 @@ class CorpusSynchronizer:
             logger.error(
                 f"Chunk count mismatch for {rel_path}: expected {total_chunks}, got {len(notes)}"
             )
-            return False
+            return None
         await self.store.replace_file_notes(rel_path, notes)
         if self._reconciling:
             self._write_state("syncing", last_event="index", path=rel_path)
         else:
             self._write_state("ready", last_event="index", path=rel_path)
         logger.info(f"Indexed {rel_path} ({len(notes)} chunks)")
-        return True
+        return IndexOutcome.INDEXED
 
     async def reconcile(self) -> ReconcileSummary:
         if self._reconcile_lock.locked():
@@ -215,7 +235,18 @@ class CorpusSynchronizer:
             exclusion_filter=self.exclusion_filter,
         )
         metadata = await self.store.get_file_metadata()
-        current = {str(path.relative_to(self.root)): path for path in files}
+        current = {}
+        skipped = 0
+        for path in files:
+            try:
+                is_empty = path.stat().st_size == 0
+            except FileNotFoundError:
+                # The file disappeared after the scan and is no longer current.
+                continue
+            if is_empty:
+                skipped += 1
+                continue
+            current[str(path.relative_to(self.root))] = path
         stale_paths = sorted(set(metadata) - set(current))
         removed = await self.store.delete_notes_by_paths(stale_paths) if stale_paths else 0
 
@@ -232,12 +263,14 @@ class CorpusSynchronizer:
                         unchanged += 1
                         continue
             try:
-                success = await self.reindex_file(path, allow_metadata_fallback=stored is None)
+                outcome = await self.reindex_file(path, allow_metadata_fallback=stored is None)
             except Exception as exc:  # noqa: BLE001 - continue with the remaining corpus
                 logger.exception(f"Unexpected failure indexing {rel_path}: {exc}")
-                success = False
-            if not success:
+                outcome = None
+            if outcome is None:
                 failed += 1
+            elif outcome is IndexOutcome.SKIPPED:
+                skipped += 1
             elif stored is None:
                 added += 1
             else:
@@ -250,6 +283,7 @@ class CorpusSynchronizer:
             unchanged=unchanged,
             removed=removed,
             failed=failed,
+            skipped=skipped,
         )
         logger.info(f"Corpus reconciliation complete: {summary}")
         return summary
