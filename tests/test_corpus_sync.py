@@ -1,6 +1,6 @@
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -36,6 +36,26 @@ async def test_reconcile_leaves_unchanged_file_unembedded(tmp_path, mock_store, 
 
     assert summary.unchanged == 1
     mock_embedder.embed_with_chunks.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reconcile_reindexes_same_size_edit_with_subsecond_mtime_change(
+    tmp_path, mock_store, mock_embedder
+):
+    path = tmp_path / "changed.md"
+    path.write_text("new content")
+    stat = path.stat()
+    file_mtime = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
+    mock_store.get_file_metadata.return_value = {
+        "changed.md": (file_mtime - timedelta(microseconds=1), stat.st_size)
+    }
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".md"})
+
+    summary = await sync.reconcile()
+
+    assert summary.updated == 1
+    assert summary.unchanged == 0
+    mock_embedder.embed_with_chunks.assert_awaited_once()
 
 
 @pytest.mark.asyncio

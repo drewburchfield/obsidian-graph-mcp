@@ -257,11 +257,9 @@ class CorpusSynchronizer:
             stored = metadata.get(rel_path)
             if stored is not None:
                 stored_mtime, stored_size = stored
-                if stored_size == stat.st_size and stored_mtime is not None:
-                    delta = abs((file_mtime - stored_mtime).total_seconds())
-                    if delta <= 1:
-                        unchanged += 1
-                        continue
+                if stored_size == stat.st_size and stored_mtime == file_mtime:
+                    unchanged += 1
+                    continue
             try:
                 outcome = await self.reindex_file(path, allow_metadata_fallback=stored is None)
             except Exception as exc:  # noqa: BLE001 - continue with the remaining corpus
