@@ -146,6 +146,41 @@ async def test_reconcile_removes_missing_and_excluded_paths(tmp_path, mock_store
 
 
 @pytest.mark.asyncio
+async def test_reconcile_tolerates_file_deleted_after_current_snapshot(
+    tmp_path, mock_store, mock_embedder, monkeypatch
+):
+    path = tmp_path / "disappearing.md"
+    path.write_text("temporary content")
+    stat = path.stat()
+    mock_store.get_file_metadata.return_value = {
+        "disappearing.md": (datetime.fromtimestamp(stat.st_mtime, tz=UTC), stat.st_size)
+    }
+    mock_store.delete_notes_by_paths.return_value = 1
+    original_stat = Path.stat
+    target_stat_calls = 0
+
+    def delete_before_second_stat(candidate, *args, **kwargs):
+        nonlocal target_stat_calls
+        if candidate == path:
+            target_stat_calls += 1
+            if target_stat_calls == 2:
+                path.unlink()
+                raise FileNotFoundError(path)
+        return original_stat(candidate, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", delete_before_second_stat)
+    sync = CorpusSynchronizer(str(tmp_path), mock_store, mock_embedder, enabled_extensions={".md"})
+
+    summary = await sync.reconcile()
+
+    assert summary.removed == 1
+    assert summary.failed == 0
+    mock_store.delete_notes_by_paths.assert_awaited_once_with(["disappearing.md"])
+    state = json.loads(sync.state_path.read_text())
+    assert state["status"] == "ready"
+
+
+@pytest.mark.asyncio
 async def test_reindex_replaces_all_chunks_atomically(tmp_path, mock_store, mock_embedder):
     path = tmp_path / "large.txt"
     path.write_text("content")

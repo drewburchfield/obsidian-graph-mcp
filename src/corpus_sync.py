@@ -252,7 +252,13 @@ class CorpusSynchronizer:
 
         added = updated = unchanged = failed = 0
         for rel_path, path in current.items():
-            stat = path.stat()
+            try:
+                stat = path.stat()
+            except FileNotFoundError:
+                # The file vanished after the current-path snapshot. Remove any
+                # indexed version now instead of degrading the whole reconcile.
+                removed += await self.store.delete_notes_by_paths([rel_path])
+                continue
             file_mtime = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
             stored = metadata.get(rel_path)
             if stored is not None:
